@@ -27,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -56,7 +57,7 @@ class SessionInstaller(
     }
 
     private val installMutex = AtomicBoolean(false)
-    private val mutex = Mutex()
+    private val installNewMutex = Mutex()
     private val scope = CoroutineScope(Dispatchers.IO)
 
     suspend fun install(id: Int, packageName: String, stream: InputStream) {
@@ -72,44 +73,40 @@ class SessionInstaller(
         id: Int,
         packageName: String,
         streams: List<InputStream>
-    ): Boolean {
+    ): Boolean = installNewMutex.withLock {
+        Log.i("InstallViewModel", "installNew: start id=$id pkg=$packageName splits=${streams.size}")
         val packageInstaller: PackageInstaller = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         if (Build.VERSION.SDK_INT >= 24) params.setAppPackageName(packageName)
         if (Build.VERSION.SDK_INT >= 31) params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
         if (Build.VERSION.SDK_INT >= 33) params.setPackageSource(PackageInstaller.PACKAGE_SOURCE_STORE)
 
-
-        return suspendCancellableCoroutine { continuation ->
+        return@withLock suspendCancellableCoroutine { continuation ->
 
             val receiver = object : BroadcastReceiver() {
                 override fun onReceive(context: Context, @SuppressLint("UnsafeIntentLaunch") intent: Intent?) {
-                    Log.i("InstallerReceiver", "onReceive called with intent: $intent")
+                    Log.i("InstallViewModel", "installNew: broadcast status=${intent?.extras?.getInt(PackageInstaller.EXTRA_STATUS)} id=$id pkg=$packageName")
                     when (val extra = intent?.extras?.getInt(PackageInstaller.EXTRA_STATUS)) {
                         PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                            Log.i("InstallerReceiver", "STATUS_PENDING_USER_ACTION")
+                            Log.i("InstallViewModel", "installNew: STATUS_PENDING_USER_ACTION id=$id")
                             installLog.currentInstallId = intent.getAppId() ?: 0
-                            // Launch intent to confirm install
+                            // Launch intent to confirm install (onReceive runs on main thread — no scope.launch needed)
                             intent.getIntentExtra()?.let {
                                 it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                scope.launch {
-                                    mutex.lock()
-                                    context.startActivity(it)
-                                }
+                                runCatching { context.startActivity(it) }
+                                    .onFailure { e -> Log.e("InstallViewModel", "installNew: startActivity failed id=$id", e) }
                             }
                         }
                         PackageInstaller.STATUS_SUCCESS -> {
-                            Log.i("InstallerReceiver", "SUCCESS: $extra")
+                            Log.i("InstallViewModel", "installNew: SUCCESS id=$id pkg=$packageName")
                             installLog.emitStatus(AppInstallStatus(true, id, true))
                             context.unregisterReceiver(this)
-                            if (mutex.isLocked) mutex.unlock()
                             if (continuation.isActive) continuation.resume(true) {_, _, _ -> }
                         }
                         else -> {
-                            Log.i("InstallerReceiver", "FAILURE: $extra")
+                            Log.i("InstallViewModel", "installNew: FAILURE status=$extra id=$id pkg=$packageName")
                             installLog.emitStatus(AppInstallStatus(false, id, true))
                             context.unregisterReceiver(this)
-                            if (mutex.isLocked) mutex.unlock()
                             if (continuation.isActive) continuation.resume(false) {_, _, _ -> }
                         }
                     }
@@ -126,9 +123,11 @@ class SessionInstaller(
                 override fun onBadgingChanged(sessionId: Int) {}
                 override fun onActiveChanged(sessionId: Int, active: Boolean) {}
                 override fun onCreated(sessionId: Int) {}
-                override fun onProgressChanged(sessionId: Int, p: Float) {}
+                override fun onProgressChanged(sessionId: Int, p: Float) {
+                    Log.i("InstallViewModel", "installNew: sessionProgress=$p sessionId=$sessionId id=$id pkg=$packageName")
+                }
                 override fun onFinished(sessionId: Int, success: Boolean) {
-                    Log.i("InstallerCallback", "onFinished($sessionId) called with success: $success")
+                    Log.i("InstallViewModel", "installNew: sessionFinished sessionId=$sessionId success=$success id=$id pkg=$packageName")
                     packageInstaller.unregisterSessionCallback(this)
                     runCatching { packageInstaller.openSession(sessionId).close() }.getOrNull()
                 }
@@ -144,6 +143,7 @@ class SessionInstaller(
             }
 
             val sessionId = packageInstaller.createSession(params)
+            Log.i("InstallViewModel", "installNew: sessionId=$sessionId id=$id pkg=$packageName writing ${streams.size} stream(s)")
             var totalBytes = 0L
             packageInstaller.openSession(sessionId).use { session ->
                 streams.forEach { stream ->
@@ -160,7 +160,7 @@ class SessionInstaller(
                     }
                     stream.close()
                 }
-
+                Log.i("InstallViewModel", "installNew: committing sessionId=$sessionId id=$id pkg=$packageName totalBytes=$totalBytes")
                 val intent = Intent("$INSTALL_ACTION.$id").apply { setPackage(context.packageName) }
                 val pending = PendingIntent.getBroadcast(context, sessionId, intent, FLAG_UPDATE_CURRENT or FLAG_MUTABLE)
                 session.commit(pending.intentSender)

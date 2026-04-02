@@ -41,4 +41,7 @@ class Prefs(
 	val playAuthData = json("playAuthData", AuthData("", ""), true)
 	val lastPlayCheck = long("lastPlayCheck", 0L, true)
 	val newInstaller = boolean("newInstaller", defValue = false, backed = true)
+	val deleteAfterInstall = boolean("deleteAfterInstall", defValue = false, backed = true)
+	val downloadDir = string("downloadDir", defValue = "", backed = true)
+	val groupByPackageDefault = boolean("groupByPackageDefault", defValue = true, backed = true)
 }

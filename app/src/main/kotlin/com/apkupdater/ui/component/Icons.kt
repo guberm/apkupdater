@@ -89,6 +89,13 @@ fun IgnoreIcon(ignored: Boolean, onClick: () -> Unit, modifier: Modifier = Modif
 )
 
 @Composable
+fun IgnoreAppIcon(onClick: () -> Unit, modifier: Modifier = Modifier) = Icon(
+    painter = painterResource(id = R.drawable.ic_block),
+    contentDescription = stringResource(R.string.ignore_app_cd),
+    modifier = Modifier.clickableNoRipple(onClick).then(modifier)
+)
+
+@Composable
 fun InstallIcon(onClick: () -> Unit, modifier: Modifier = Modifier) = Icon(
     painter = painterResource(R.drawable.ic_install),
     contentDescription = stringResource(R.string.install_cd),
@@ -98,11 +105,12 @@ fun InstallIcon(onClick: () -> Unit, modifier: Modifier = Modifier) = Icon(
 @Composable
 fun BoxScope.InstallProgressIcon(
     isInstalling: Boolean,
+    onCancel: () -> Unit = {},
     onClick: () -> Unit
 ) {
     if(isInstalling) {
         CircularProgressIndicator(
-            Modifier.align(Alignment.TopEnd).size(30.dp).padding(4.dp),
+            Modifier.align(Alignment.TopEnd).size(30.dp).padding(4.dp).clickableNoRipple(onCancel),
             color = MaterialTheme.colorScheme.primary
         )
     }

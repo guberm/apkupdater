@@ -45,6 +45,7 @@ import okhttp3.Cache
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import org.koin.android.ext.koin.androidContext
+import org.koin.android.ext.koin.androidApplication
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
@@ -134,10 +135,14 @@ val mainModule = module {
 
 	single {
 		val client = OkHttpClient.Builder().followRedirects(true).cache(get()).build()
-		val auroraClient = OkHttpClient.Builder().followRedirects(true).cache(get()).addUserAgentInterceptor("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36").build()
+		val auroraClient = OkHttpClient.Builder().followRedirects(true).cache(get())
+			.connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+			.readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+			.writeTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+			.addUserAgentInterceptor("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36").build()
 		val apkPureClient = OkHttpClient.Builder().followRedirects(true).cache(get()).addUserAgentInterceptor("APKPure/3.19.39 (Aegon)").build()
 		val dir = File(androidContext().cacheDir, "downloads").apply { mkdirs() }
-		Downloader(client, apkPureClient, auroraClient, dir)
+		Downloader(client, apkPureClient, auroraClient, dir, androidContext())
 	}
 
 	single { ApkMirrorRepository(get(), get(), androidContext().packageManager) }
@@ -188,7 +193,7 @@ val mainModule = module {
 
 	viewModel { AppsViewModel(get(), get(), get()) }
 
-	viewModel { UpdatesViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+	viewModel { UpdatesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), androidApplication()) }
 
 	viewModel { SettingsViewModel(get(), get(), WorkManager.getInstance(get()), get(), get(), get(), get()) }
 

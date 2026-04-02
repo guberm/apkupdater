@@ -1,5 +1,6 @@
 package com.apkupdater.viewmodel
 
+import android.net.Uri
 import android.util.Log
 import androidx.compose.ui.platform.UriHandler
 import androidx.lifecycle.ViewModel
@@ -28,7 +29,7 @@ abstract class InstallViewModel(
     private val prefs: Prefs,
     private val snackBar: SnackBar,
     private val stringer: Stringer,
-    private val installLog: InstallLog
+    protected val installLog: InstallLog
 ): ViewModel() {
 
     fun install(update: AppUpdate, uriHandler: UriHandler) {
@@ -85,14 +86,42 @@ abstract class InstallViewModel(
             Link.Empty -> { Log.e("InstallViewModel", "downloadAndInstall: Unsupported.")}
             is Link.Play -> {
                 val files = link.getInstallFiles()
-                installLog.emitProgress(AppInstallProgress(id, 0L, files.sumOf { it.size }))
-                installer.install(id, packageName, files.map { downloader.downloadStream(it.url)!! })
+                Log.d("InstallViewModel", "Play: id=$id pkg=$packageName splits=${files.size} totalBytes=${files.sumOf { it.size }}")
+                files.forEachIndexed { i, f -> Log.d("InstallViewModel", "Play split[$i]: url=${f.url} size=${f.size}") }
+                val totalBytes = files.sumOf { it.size }
+                installLog.emitProgress(AppInstallProgress(id, 0L, totalBytes))
+                // Download sequentially with per-byte progress updates
+                var alreadyDownloaded = 0L
+                val tempFiles = files.map { file ->
+                    val offsetForThisFile = alreadyDownloaded
+                    val tmpFile = downloader.downloadFile(file.url) { curr, _ ->
+                        installLog.emitProgress(AppInstallProgress(id, offsetForThisFile + curr, totalBytes))
+                    }
+                    alreadyDownloaded += file.size
+                    tmpFile
+                }
+                Log.d("InstallViewModel", "Play: downloads complete, tempFiles=${tempFiles.map { "${it.name}:${it.length()}" }}")
+                // Save to custom directory if configured
+                val customDirStr = prefs.downloadDir.get()
+                if (customDirStr.isNotEmpty()) {
+                    val treeUri = Uri.parse(customDirStr)
+                    tempFiles.forEachIndexed { i, f ->
+                        val name = if (tempFiles.size == 1) "$packageName.apk" else "${packageName}_$i.apk"
+                        Log.d("InstallViewModel", "Play: copying to custom dir name=$name treeUri=$treeUri")
+                        downloader.copyToUri(f, treeUri, name)?.let { uri -> trackDownloadedUri(id, uri) }
+                    }
+                }
+                try {
+                    installer.install(id, packageName, tempFiles.map { it.inputStream() })
+                } finally {
+                    tempFiles.forEach { it.delete() }
+                }
             }
             is Link.Url -> {
                 installLog.emitProgress(AppInstallProgress(id, 0L, link.size))
-                installer.install(id, packageName, downloader.downloadStream(link.link)!!)
+                installer.install(id, packageName, downloader.downloadStream(link.link, id)!!)
             }
-            is Link.Xapk -> installer.installXapk(id, packageName, downloader.downloadStream(link.link)!!)
+            is Link.Xapk -> installer.installXapk(id, packageName, downloader.downloadStream(link.link, id)!!)
         }
     }.getOrElse {
         Log.e("InstallViewModel", "Error in downloadAndInstall.", it)
@@ -104,4 +133,5 @@ abstract class InstallViewModel(
     protected abstract fun downloadAndRootInstall(update: AppUpdate): Job
     protected abstract fun cancelInstall(id: Int): Job
     protected abstract fun finishInstall(id: Int): Job
+    protected open fun trackDownloadedUri(id: Int, uri: Uri) {}
 }

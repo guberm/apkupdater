@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
@@ -56,6 +57,7 @@ import com.apkupdater.ui.component.SourceIcon
 import com.apkupdater.ui.component.SwitchSetting
 import com.apkupdater.ui.theme.statusBarColor
 import com.apkupdater.util.isAndroidTv
+import com.apkupdater.util.getAppName
 import com.apkupdater.viewmodel.SettingsViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import java.util.Calendar
@@ -63,12 +65,19 @@ import java.util.Calendar
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) = Column {
-	if (viewModel.state.collectAsStateWithLifecycle().value == SettingsUiState.Settings) {
-		SettingsTopBar(viewModel)
-		Settings(viewModel)
-	} else {
-		AboutTopBar(viewModel)
-		About()
+	when (viewModel.state.collectAsStateWithLifecycle().value) {
+		SettingsUiState.Settings -> {
+			SettingsTopBar(viewModel)
+			Settings(viewModel)
+		}
+		SettingsUiState.About -> {
+			AboutTopBar(viewModel)
+			About()
+		}
+		SettingsUiState.Ignored -> {
+			IgnoredTopBar(viewModel)
+			IgnoredScreen(viewModel)
+		}
 	}
 }
 
@@ -345,6 +354,56 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 			R.drawable.ic_copy
 		)
 	}
+	item {
+		val context = LocalContext.current
+		val dirLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+			if (uri != null) {
+				runCatching {
+					context.contentResolver.takePersistableUriPermission(
+						uri,
+						android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+					)
+				}
+			}
+			viewModel.setDownloadDir(uri?.toString() ?: "")
+		}
+		LargeTitle(stringResource(R.string.settings_options) + " 2", Modifier.padding(start = 16.dp, top = 16.dp))
+		SwitchSetting(
+			{ viewModel.getGroupByPackageDefault() },
+			{ viewModel.setGroupByPackageDefault(it) },
+			stringResource(R.string.settings_group_by_default),
+			R.drawable.ic_filter
+		)
+		SwitchSetting(
+			{ viewModel.getDeleteAfterInstall() },
+			{ viewModel.setDeleteAfterInstall(it) },
+			stringResource(R.string.settings_delete_after_install),
+			R.drawable.ic_download
+		)
+		val currentDir = viewModel.getDownloadDir()
+		val dirSubtitle = if (currentDir.isEmpty()) {
+			stringResource(R.string.settings_download_dir_default)
+		} else {
+			runCatching {
+				val decoded = android.net.Uri.decode(currentDir)
+				val last = decoded.substringAfterLast(":")
+				last.ifEmpty { decoded }
+			}.getOrDefault(currentDir)
+		}
+		ButtonSetting(
+			stringResource(R.string.settings_download_dir),
+			{ dirLauncher.launch(null) },
+			R.drawable.ic_folder,
+			R.drawable.ic_folder,
+			dirSubtitle
+		)
+		ButtonSetting(
+			stringResource(R.string.settings_ignored),
+			{ viewModel.setIgnored() },
+			R.drawable.ic_block,
+			R.drawable.ic_block
+		)
+	}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -382,3 +441,57 @@ fun AboutTopBar(viewModel: SettingsViewModel) = TopAppBar(
 		}
 	}
 )
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun IgnoredTopBar(viewModel: SettingsViewModel) = TopAppBar(
+	title = { Text(stringResource(R.string.settings_ignored)) },
+	colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.statusBarColor()),
+	windowInsets = WindowInsets(0),
+	actions = {
+		IconButton(onClick = { viewModel.setSettings() }) {
+			Icon(Icons.Default.Settings, stringResource(R.string.tab_settings))
+		}
+	},
+	navigationIcon = {
+		Box(Modifier.minimumInteractiveComponentSize().size(40.dp), Alignment.Center) {
+			Icon(painterResource(R.drawable.ic_block), "Tab Icon")
+		}
+	}
+)
+
+@Composable
+fun IgnoredScreen(viewModel: SettingsViewModel) {
+	val ignoredApps = remember { mutableStateOf(viewModel.getIgnoredApps()) }
+
+	if (ignoredApps.value.isEmpty()) {
+		Box(Modifier.fillMaxSize()) {
+			MediumTitle(stringResource(R.string.settings_ignored_empty), Modifier.align(Alignment.Center))
+		}
+	} else {
+		LazyColumn(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
+			items(ignoredApps.value) { packageName ->
+				IgnoredAppItem(packageName) {
+					viewModel.unignoreApp(packageName)
+					ignoredApps.value = viewModel.getIgnoredApps()
+				}
+			}
+		}
+	}
+}
+
+@Composable
+fun IgnoredAppItem(packageName: String, onUnignore: () -> Unit) = OutlinedCard(
+	Modifier.fillMaxWidth().padding(bottom = 8.dp, top = 8.dp)
+) {
+	Row(Modifier.padding(8.dp)) {
+		LoadingImageApp(packageName, Modifier.size(48.dp).align(Alignment.CenterVertically))
+		Column(Modifier.padding(start = 12.dp).weight(1f).align(Alignment.CenterVertically)) {
+			MediumTitle(LocalContext.current.getAppName(packageName).ifEmpty { packageName })
+			MediumText(packageName)
+		}
+		IconButton(onClick = onUnignore, Modifier.align(Alignment.CenterVertically)) {
+			Icon(painterResource(R.drawable.ic_visible), stringResource(R.string.unignore_app))
+		}
+	}
+}

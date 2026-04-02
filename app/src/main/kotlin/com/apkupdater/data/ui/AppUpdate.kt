@@ -35,6 +35,11 @@ fun MutableList<AppUpdate>.removeId(id: Int): List<AppUpdate> {
 	return this
 }
 
+fun MutableList<AppUpdate>.removePackage(id: Int): List<AppUpdate> {
+	val packageName = find { it.id == id }?.packageName ?: return removeId(id)
+	return filter { it.packageName != packageName }
+}
+
 fun MutableList<AppUpdate>.setProgress(progress: AppInstallProgress): MutableList<AppUpdate> {
 	val index = this.indexOf(progress.id)
 	if (index != -1) {

@@ -244,7 +244,8 @@ fun ButtonSetting(
     text: String,
     onClick: () -> Unit,
     @DrawableRes icon: Int,
-    @DrawableRes iconButton: Int
+    @DrawableRes iconButton: Int,
+    subtitle: String = ""
 ) = Row(
     Modifier
         .fillMaxWidth()
@@ -252,8 +253,12 @@ fun ButtonSetting(
         .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)
 ) {
     Icon(painterResource(id = icon), text, Modifier.align(CenterVertically))
-    Text(text, Modifier.align(CenterVertically).padding(start = 16.dp))
-    Spacer(Modifier.weight(1f))
+    Column(Modifier.align(CenterVertically).padding(start = 16.dp).weight(1f)) {
+        Text(text)
+        if (subtitle.isNotEmpty()) {
+            Text(subtitle, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+        }
+    }
     IconButton(onClick = onClick) {
         Icon(painterResource(iconButton), stringResource(R.string.copy_to_clipboard))
     }

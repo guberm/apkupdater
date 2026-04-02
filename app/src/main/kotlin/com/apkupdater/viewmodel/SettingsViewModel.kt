@@ -114,6 +114,26 @@ class SettingsViewModel(
 		state.value = SettingsUiState.Settings
 	}
 
+	fun setIgnored() {
+		state.value = SettingsUiState.Ignored
+	}
+
+	fun getIgnoredApps(): List<String> = prefs.ignoredApps.get()
+
+	fun unignoreApp(packageName: String) {
+		val ignored = prefs.ignoredApps.get().toMutableList()
+		ignored.remove(packageName)
+		prefs.ignoredApps.put(ignored)
+	}
+
+	fun getDeleteAfterInstall() = prefs.deleteAfterInstall.get()
+	fun setDeleteAfterInstall(b: Boolean) = prefs.deleteAfterInstall.put(b)
+	fun getGroupByPackageDefault() = prefs.groupByPackageDefault.get()
+	fun setGroupByPackageDefault(b: Boolean) = prefs.groupByPackageDefault.put(b)
+
+	fun getDownloadDir() = prefs.downloadDir.get()
+	fun setDownloadDir(path: String) = prefs.downloadDir.put(path)
+
 	fun copyAppList() = viewModelScope.launch(Dispatchers.IO) {
 		appsRepository.getApps().collectLatest { apps ->
 			apps.onSuccess {

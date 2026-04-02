@@ -14,8 +14,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,20 +80,51 @@ fun TvCommonItem(
 @Composable
 fun TvInstallButton(
     app: AppUpdate,
-    onInstall: (String) -> Unit
-) = ElevatedButton(
-    modifier = Modifier.padding(top = 0.dp, bottom = 8.dp, start = 8.dp, end = 8.dp).width(120.dp),
-    onClick = { onInstall(app.packageName) }
-) {
-    if (app.isInstalling) {
-        if (app.total != 0L && app.progress != 0L) {
-            val p = (app.progress.toFloat() / app.total) * 100f
-            Text("${p.to2f()}%")
-        } else {
-            CircularProgressIndicator(Modifier.size(24.dp))
+    alternatives: List<AppUpdate> = listOf(app),
+    onInstall: (AppUpdate) -> Unit,
+    onCancel: () -> Unit = {}
+) = Box {
+    var expanded by remember { mutableStateOf(false) }
+    val installing = alternatives.firstOrNull { it.isInstalling }
+    ElevatedButton(
+        modifier = Modifier.padding(top = 0.dp, bottom = 8.dp, start = 8.dp, end = 8.dp),
+        onClick = {
+            if (installing != null) onCancel()
+            else if (alternatives.size > 1) expanded = true
+            else onInstall(app)
         }
-    } else {
-        Text(stringResource(R.string.install_cd))
+    ) {
+        if (installing != null) {
+            if (installing.total != 0L && installing.progress != 0L) {
+                val p = (installing.progress.toFloat() / installing.total) * 100f
+                Text("${p.to2f()}%")
+            } else {
+                CircularProgressIndicator(Modifier.size(24.dp))
+            }
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                alternatives.forEach { alt ->
+                    SourceIcon(alt.source, Modifier.size(20.dp))
+                }
+            }
+        }
+    }
+    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        alternatives.forEach { alt ->
+            DropdownMenuItem(
+                text = {
+                    Column {
+                        MediumText(alt.source.name)
+                        SmallText(alt.version)
+                    }
+                },
+                leadingIcon = { SourceIcon(alt.source, Modifier.size(20.dp)) },
+                onClick = { expanded = false; onInstall(alt) }
+            )
+        }
     }
 }
 
@@ -129,20 +166,32 @@ fun TvIgnoreVersionButton(
 }
 
 @Composable
+fun TvIgnoreAppButton(
+    app: AppUpdate,
+    onIgnoreApp: (String) -> Unit,
+) = ElevatedButton(
+    modifier = Modifier.padding(top = 0.dp, bottom = 8.dp, start = 0.dp, end = 4.dp),
+    onClick = { onIgnoreApp(app.packageName) }
+) {
+    Text(stringResource(R.string.ignore_app))
+}
+
+@Composable
 fun TvUpdateItem(
     app: AppUpdate,
-    onInstall: (String) -> Unit = {},
-    onIgnoreVersion: (Int) -> Unit
+    alternatives: List<AppUpdate> = listOf(app),
+    onInstall: (AppUpdate) -> Unit = {},
+    onIgnoreVersion: (Int) -> Unit = {},
+    onIgnoreApp: (String) -> Unit = {},
+    onCancel: () -> Unit = {}
 ) = Card {
     Column {
         TvCommonItem(app.packageName, app.name, app.version, app.oldVersion, app.versionCode, app.oldVersionCode)
         WhatsNew(app.whatsNew, app.source)
-        Box {
-            TvSourceIcon(app)
-            Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.End) {
-                TvIgnoreVersionButton(app, onIgnoreVersion)
-                TvInstallButton(app, onInstall)
-            }
+        Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.End) {
+            TvIgnoreAppButton(app, onIgnoreApp)
+            TvIgnoreVersionButton(app, onIgnoreVersion)
+            TvInstallButton(app, alternatives, onInstall, onCancel)
         }
     }
 }
@@ -155,7 +204,7 @@ fun TvSearchItem(app: AppUpdate, onInstall: (String) -> Unit = {}) = Card {
         Box {
             TvSourceIcon(app)
             Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.End) {
-                TvInstallButton(app, onInstall)
+                TvInstallButton(app, listOf(app), { onInstall(it.packageName) })
             }
         }
     }

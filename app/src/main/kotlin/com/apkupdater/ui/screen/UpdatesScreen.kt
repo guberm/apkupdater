@@ -1,21 +1,30 @@
 package com.apkupdater.ui.screen
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
@@ -36,6 +45,7 @@ import com.apkupdater.ui.component.TvInstalledGrid
 import com.apkupdater.ui.component.TvUpdateItem
 import com.apkupdater.ui.component.UpdateItem
 import com.apkupdater.ui.theme.statusBarColor
+import com.apkupdater.viewmodel.UpdatesFilter
 import com.apkupdater.viewmodel.UpdatesViewModel
 import org.koin.compose.koinInject
 
@@ -77,6 +87,68 @@ fun UpdatesTopBar(viewModel: UpdatesViewModel) = TopAppBar(
 )
 
 @Composable
+fun UpdatesFilterBar(viewModel: UpdatesViewModel, updates: List<AppUpdate>) {
+	val currentFilter by viewModel.filterMode.collectAsStateWithLifecycle()
+	val currentQuery by viewModel.filterQuery.collectAsStateWithLifecycle()
+	val groupByPackage by viewModel.groupByPackage.collectAsStateWithLifecycle()
+
+	Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+		Row(
+			Modifier.horizontalScroll(rememberScrollState()),
+			horizontalArrangement = Arrangement.spacedBy(8.dp)
+		) {
+			FilterChip(
+				selected = currentFilter == UpdatesFilter.All,
+				onClick = { viewModel.setFilter(UpdatesFilter.All) },
+				label = { Text(stringResource(R.string.filter_all)) }
+			)
+			FilterChip(
+				selected = currentFilter == UpdatesFilter.ByPackage,
+				onClick = { viewModel.setFilter(UpdatesFilter.ByPackage) },
+				label = { Text(stringResource(R.string.filter_by_package)) }
+			)
+			FilterChip(
+				selected = currentFilter == UpdatesFilter.BySource,
+				onClick = { viewModel.setFilter(UpdatesFilter.BySource) },
+				label = { Text(stringResource(R.string.filter_by_source)) }
+			)
+			FilterChip(
+				selected = groupByPackage,
+				onClick = { viewModel.toggleGroupByPackage() },
+				label = { Text(stringResource(R.string.filter_group)) }
+			)
+		}
+		when (currentFilter) {
+			UpdatesFilter.ByPackage -> OutlinedTextField(
+				value = currentQuery,
+				onValueChange = { viewModel.setFilterQuery(it) },
+				modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+				placeholder = { Text(stringResource(R.string.filter_search_hint)) },
+				singleLine = true
+			)
+			UpdatesFilter.BySource -> {
+				val sources = updates.map { it.source }.distinctBy { it.name }
+				Row(
+					Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 4.dp),
+					horizontalArrangement = Arrangement.spacedBy(8.dp)
+				) {
+					sources.forEach { source ->
+						FilterChip(
+							selected = currentQuery == source.name,
+							onClick = {
+								viewModel.setFilterQuery(if (currentQuery == source.name) "" else source.name)
+							},
+							label = { Text(source.name) }
+						)
+					}
+				}
+			}
+			else -> {}
+		}
+	}
+}
+
+@Composable
 fun UpdatesScreenLoading(viewModel: UpdatesViewModel) = Column {
 	UpdatesTopBar(viewModel)
 	LoadingGrid()
@@ -92,13 +164,21 @@ fun UpdatesScreenSuccess(
 ) = Column {
 	val handler = LocalUriHandler.current
 	val tv = koinInject<Prefs>().androidTvUi.get()
+	val currentFilter by viewModel.filterMode.collectAsStateWithLifecycle()
+	val currentQuery by viewModel.filterQuery.collectAsStateWithLifecycle()
+	val groupByPackage by viewModel.groupByPackage.collectAsStateWithLifecycle()
+	val displayedUpdates = run {
+		val filtered = viewModel.filteredUpdates(updates, currentFilter, currentQuery)
+		if (groupByPackage) filtered.distinctBy { it.packageName } else filtered
+	}
 
 	UpdatesTopBar(viewModel)
+	UpdatesFilterBar(viewModel, updates)
 
 	when {
-		updates.isEmpty() -> EmptyGrid()
-		tv -> TvGrid(viewModel, updates, handler)
-		!tv -> Grid(viewModel, updates, handler)
+		displayedUpdates.isEmpty() -> EmptyGrid()
+		tv -> TvGrid(viewModel, displayedUpdates, updates, groupByPackage, handler)
+		!tv -> Grid(viewModel, displayedUpdates, updates, groupByPackage, handler)
 	}
 }
 
@@ -106,13 +186,19 @@ fun UpdatesScreenSuccess(
 fun TvGrid(
 	viewModel: UpdatesViewModel,
 	updates: List<AppUpdate>,
+	allUpdates: List<AppUpdate>,
+	groupByPackage: Boolean,
 	handler: UriHandler
 ) = TvInstalledGrid {
 	items(updates) { update ->
+		val alts = if (groupByPackage) allUpdates.filter { it.packageName == update.packageName } else listOf(update)
 		TvUpdateItem(
 			update,
-			{ viewModel.install(update, handler) },
-			{ viewModel.ignoreVersion(update.id)}
+			alts,
+			onInstall = { chosen -> viewModel.install(chosen, handler) },
+			{ viewModel.ignoreVersion(update.id) },
+			{ viewModel.ignoreApp(update.packageName) },
+			{ viewModel.cancelInstall(alts.firstOrNull { it.isInstalling }?.id ?: update.id) }
 		)
 	}
 }
@@ -121,11 +207,19 @@ fun TvGrid(
 fun Grid(
 	viewModel: UpdatesViewModel,
 	updates: List<AppUpdate>,
+	allUpdates: List<AppUpdate>,
+	groupByPackage: Boolean,
 	handler: UriHandler
 ) = InstalledGrid {
-	items(updates) { update ->
-		UpdateItem(update) {
-			viewModel.install(update, handler)
-		}
+	items(updates, key = { it.id }) { update ->
+		val alts = if (groupByPackage) allUpdates.filter { it.packageName == update.packageName } else listOf(update)
+		UpdateItem(
+			update,
+			alts,
+			onInstall = { chosen -> viewModel.install(chosen, handler) },
+			{ viewModel.cancelInstall(alts.firstOrNull { it.isInstalling }?.id ?: update.id) },
+			{ viewModel.ignoreApp(update.packageName) }
+		)
 	}
 }
+
