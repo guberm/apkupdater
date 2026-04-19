@@ -195,8 +195,13 @@ class UpdatesViewModel(
 	private fun List<AppUpdate>.filterIgnoredVersions(ignoredVersions: List<Int>) = this
 		.filter { !ignoredVersions.contains(it.id) }
 
+	private fun List<AppUpdate>.filterSameVersion() = if (prefs.ignoreSameVersion.get()) {
+		filter { it.version != it.oldVersion }
+	} else this
+
 	private fun setSuccess(updates: List<AppUpdate>) = updates
 		.filterIgnoredVersions(prefs.ignoredVersions.get())
+		.filterSameVersion()
 		.let {
 			state.value = UpdatesUiState.Success(it)
 			badger.changeUpdatesBadge(it.size.toString())

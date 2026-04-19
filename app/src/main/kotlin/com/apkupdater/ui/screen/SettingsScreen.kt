@@ -228,6 +228,14 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 			stringResource(R.string.source_apkmirror),
 			R.drawable.ic_apkmirror
 		)
+		DropDownSetting(
+			text = stringResource(R.string.settings_apkmirror_arch),
+			options = listOf("Auto", "arm64-v8a", "armeabi-v7a", "x86_64", "x86"),
+			getValue = { viewModel.getApkMirrorArch() },
+			setValue = { viewModel.setApkMirrorArch(it) },
+			icon = R.drawable.ic_apkmirror,
+			width = 130
+		)
 		SwitchSetting(
 			{ viewModel.getUseFdroid() },
 			{ viewModel.setUseFdroid(it) },
@@ -285,6 +293,12 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 			{ viewModel.setIgnorePreRelease(it) },
 			stringResource(R.string.ignore_preRelease),
 			R.drawable.ic_pre_release
+		)
+		SwitchSetting(
+			{ viewModel.getIgnoreSameVersion() },
+			{ viewModel.setIgnoreSameVersion(it) },
+			stringResource(R.string.ignore_same_version),
+			R.drawable.ic_visible
 		)
 		SwitchSetting(
 			{ viewModel.getUseSafeStores() },

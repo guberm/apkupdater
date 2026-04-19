@@ -133,6 +133,10 @@ class SettingsViewModel(
 
 	fun getDownloadDir() = prefs.downloadDir.get()
 	fun setDownloadDir(path: String) = prefs.downloadDir.put(path)
+	fun getIgnoreSameVersion() = prefs.ignoreSameVersion.get()
+	fun setIgnoreSameVersion(b: Boolean) = prefs.ignoreSameVersion.put(b)
+	fun getApkMirrorArch() = prefs.apkMirrorArch.get()
+	fun setApkMirrorArch(i: Int) = prefs.apkMirrorArch.put(i)
 
 	fun copyAppList() = viewModelScope.launch(Dispatchers.IO) {
 		appsRepository.getApps().collectLatest { apps ->

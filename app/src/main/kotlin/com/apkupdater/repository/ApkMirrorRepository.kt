@@ -33,12 +33,16 @@ class ApkMirrorRepository(
     packageManager: PackageManager
 ) {
 
-    private val arch = when {
+    private val deviceArch = when {
+        Build.SUPPORTED_ABIS.contains("arm64-v8a") -> "arm64-v8a"
+        Build.SUPPORTED_ABIS.contains("x86_64") -> "x86_64"
+        Build.SUPPORTED_ABIS.contains("armeabi-v7a") -> "armeabi-v7a"
         Build.SUPPORTED_ABIS.contains("x86") -> "x86"
-        Build.SUPPORTED_ABIS.contains("x86_64") -> "x86"
-        Build.SUPPORTED_ABIS.contains("armeabi-v7a") -> "arm"
-        Build.SUPPORTED_ABIS.contains("arm64-v8a") -> "arm"
-        else -> "arm"
+        else -> "armeabi-v7a"
+    }
+
+    companion object {
+        val archOptions = listOf("auto", "arm64-v8a", "armeabi-v7a", "x86_64", "x86")
     }
 
     private val isAndroidTV = packageManager.isAndroidTv()
@@ -109,12 +113,17 @@ class ApkMirrorRepository(
         else -> false
     }
 
-    private fun filterArch(app: AppExistsResponseApk) = when {
-        app.arches.isEmpty() -> true
-        app.arches.contains("universal") || app.arches.contains("noarch") -> true
-        app.arches.find { a -> Build.SUPPORTED_ABIS.contains(a) } != null -> true
-        app.arches.find { a -> a.contains(arch) } != null -> true
-        else -> false
+    private fun filterArch(app: AppExistsResponseApk): Boolean {
+        if (app.arches.isEmpty()) return true
+        if (app.arches.contains("universal") || app.arches.contains("noarch")) return true
+        val archIndex = prefs.apkMirrorArch.get()
+        return if (archIndex == 0) {
+            app.arches.find { a -> Build.SUPPORTED_ABIS.contains(a) } != null ||
+            app.arches.find { a -> a.contains(deviceArch) } != null
+        } else {
+            val selectedArch = archOptions.getOrElse(archIndex) { deviceArch }
+            app.arches.contains(selectedArch)
+        }
     }
 
     private fun filterAndroidTv(apk: AppExistsResponseApk): Boolean {
