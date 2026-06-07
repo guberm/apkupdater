@@ -8,20 +8,23 @@ The 3.x branch is a full rewrite using modern technologies like **Jetpack Compos
 * **Update Sources**: Find updates from **APKMirror**, **Aptoide**, **F-Droid**, **IzzyOnDroid**, **APKPure**, **GitLab**, **GitHub** and **Google Play**.
 * **Search Sources**: Find new apps to install from **APKMirror**, **Aptoide**, **F-Droid**, **IzzyOnDroid**, **APKPure**, **GitLab**, **GitHub** and **Google Play**.
 * Schedule **background update checks** and receive a **notification** when updates are found.
-* Supports **Android 5** (**21**) to **Android 14** (**34**).
+* Supports **Android 6** (**23**) to **Android 16** (**36**).
 * Supports **Android TV**.
 * **Material Design 3** with **Dark**, **Light** and **System** theme support.
 * Supports **Material You** on Android 12+.
 * **Direct install** of updates for sources that support it.
+* **Direct APKMirror downloads** from the Update button instead of opening the APKMirror website.
+* **APKM/APKS/XAPK package archive install** support after download.
+* **Bulk download and install** keeps running when the TV app is sent to the background.
+* **Alpha/Beta filtering** is enforced across update results when the ignore toggles are enabled.
 * Supports **installs without user interaction** on Android 12+.
 * **Root install** of updates.
 * No ads. No tracking.
 * **Languages**: Albanian, Arabic, Burmese, Dutch, English, German, Hebrew, Hungarian, Indonesian, Italian, Korean, Malay, Portuguese, Romanian, Russian, Simplified Chinese, Spanish, Traditional Chinese, Turkish.
 
 # Download
-* [Stable Release (3.0.3)](https://github.com/rumboalla/apkupdater/releases/download/3.0.3/com.apkupdater-release.apk)
-* [CI Pre-release Builds](https://github.com/rumboalla/apkupdater/releases?q=CI&expanded=true)
-* [Older releases](https://github.com/rumboalla/apkupdater/releases)
+* [Debug Release (3.0.5)](https://github.com/guberm/apkupdater-private/releases/download/3.0.5/com.apkupdater-debug.apk)
+* [Upstream stable releases](https://github.com/rumboalla/apkupdater/releases)
 
 # Translations
 If you want to help with translations, open a [Pull Request](https://github.com/rumboalla/apkupdater/pulls) or an [Issue](https://github.com/rumboalla/apkupdater/issues) with the translated [strings.xml](https://github.com/rumboalla/apkupdater/blob/3.x/app/src/main/res/values/strings.xml).

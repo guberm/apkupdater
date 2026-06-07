@@ -101,13 +101,20 @@ class GitLabRepository(
         release: GitLabRelease
     ): String {
         // TODO: Take into account arch
-        val source = release.assets.sources.find { it.url.endsWith(".apk", true) }
+        val source = release.assets.sources.find { it.url.isInstallablePackageUrl() }
         if (source != null) return source.url
 
-        val link = release.assets.links.find { it.url.endsWith(".apk", true) }
+        val link = release.assets.links.find { it.url.isInstallablePackageUrl() }
         if (link != null) return link.url
 
         return ""
+    }
+
+    private fun String.isInstallablePackageUrl() =
+        INSTALLABLE_PACKAGE_EXTENSIONS.any { endsWith(it, ignoreCase = true) }
+
+    private companion object {
+        val INSTALLABLE_PACKAGE_EXTENSIONS = listOf(".apk", ".apkm", ".apks", ".xapk")
     }
 
 }

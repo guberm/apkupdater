@@ -147,7 +147,7 @@ class GitHubRepository(
     }
 
     private fun findApkAsset(assets: List<GitHubReleaseAsset>) = assets
-        .filter { it.browser_download_url.endsWith(".apk", true) }
+        .filter { it.isInstallablePackageAsset() }
         .maxByOrNull { it.size }
         ?.browser_download_url
         .orEmpty()
@@ -157,7 +157,7 @@ class GitHubRepository(
         extra: Regex?
     ): GitHubReleaseAsset {
         val apks = assets
-            .filter { it.browser_download_url.endsWith(".apk", true) }
+            .filter { it.isInstallablePackageAsset() }
             .filter { filterExtra(it, extra) }
 
         when {
@@ -205,6 +205,13 @@ class GitHubRepository(
     private fun filterExtra(asset: GitHubReleaseAsset, extra: Regex?) = when(extra) {
         null -> true
         else -> asset.browser_download_url.matches(extra)
+    }
+
+    private fun GitHubReleaseAsset.isInstallablePackageAsset() =
+        INSTALLABLE_PACKAGE_EXTENSIONS.any { browser_download_url.endsWith(it, ignoreCase = true) }
+
+    private companion object {
+        val INSTALLABLE_PACKAGE_EXTENSIONS = listOf(".apk", ".apkm", ".apks", ".xapk")
     }
 
 }

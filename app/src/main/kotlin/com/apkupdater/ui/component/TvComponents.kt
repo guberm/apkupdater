@@ -106,6 +106,7 @@ fun TvInstallButton(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Text(stringResource(if (alternatives.size > 1) R.string.choose_source else R.string.install_cd))
                 alternatives.forEach { alt ->
                     SourceIcon(alt.source, Modifier.size(20.dp))
                 }

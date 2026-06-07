@@ -17,7 +17,6 @@ import com.apkupdater.util.SessionInstaller
 import com.apkupdater.util.UpdatesNotification
 import com.apkupdater.util.getAppId
 import com.apkupdater.util.getIntentExtra
-import com.apkupdater.util.orFalse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -51,7 +50,7 @@ class MainViewModel(
 	) {
 		when {
 			intent.action == UpdatesNotification.UpdateAction -> processUpdateIntent(navController, updatesViewModel)
-			intent.action?.contains(SessionInstaller.INSTALL_ACTION).orFalse() -> processInstallIntent(intent, launcher)
+			intent.isInstallCallback() -> processInstallIntent(intent, launcher)
 			else -> {}
 		}
 	}
@@ -69,9 +68,15 @@ class MainViewModel(
 		intent: Intent,
 		launcher: ManagedActivityResultLauncher<Intent, ActivityResult>
 	) = viewModelScope.launch(Dispatchers.IO) {
+		val appId = intent.getAppId()
+		if (appId == null || !installLog.isExpectedInstall(appId)) {
+			Log.w("MainViewModel", "Ignoring unexpected install callback: ${intent.action}")
+			return@launch
+		}
+
 		when (intent.extras?.getInt(PackageInstaller.EXTRA_STATUS)) {
 			PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-				installLog.currentInstallId = intent.getAppId() ?: 0
+				installLog.currentInstallId = appId
 				// Launch intent to confirm install
 				intent.getIntentExtra()?.let {
 					it.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
@@ -79,15 +84,13 @@ class MainViewModel(
 				}
 			}
 			PackageInstaller.STATUS_SUCCESS -> {
-				intent.getAppId()?.let {
-					installLog.emitStatus(AppInstallStatus(true, it))
-				}
+				installLog.finishExpectedInstall(appId)
+				installLog.emitStatus(AppInstallStatus(true, appId))
 			}
 			else -> {
 				// We assume error and cancel the install
-				intent.getAppId()?.let {
-					installLog.emitStatus(AppInstallStatus(false, it))
-				}
+				installLog.finishExpectedInstall(appId)
+				installLog.emitStatus(AppInstallStatus(false, appId))
 				val message = intent.extras?.getString(PackageInstaller.EXTRA_STATUS_MESSAGE)
 				Log.e("MainViewModel", "Failed to install app: $message $intent")
 			}
@@ -100,6 +103,11 @@ class MainViewModel(
 	) {
 		navigateTo(navController, Screen.Updates.route)
 		updatesViewModel.refresh()
+	}
+
+	private fun Intent.isInstallCallback(): Boolean {
+		val currentAction = action ?: return false
+		return currentAction.startsWith("${SessionInstaller.INSTALL_ACTION}.")
 	}
 
 }

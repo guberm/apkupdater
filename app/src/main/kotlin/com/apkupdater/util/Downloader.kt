@@ -8,6 +8,7 @@ import okhttp3.Call
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import java.io.File
 import java.io.InputStream
 import java.util.concurrent.ConcurrentHashMap
@@ -28,10 +29,14 @@ class Downloader(
     }
 
     fun download(url: String): File {
+        val resolved = resolveDownloadUrl(url)
         val file = File(dir, randomUUID())
-        client.newCall(downloadRequest(url)).execute().use {
-            if (it.isSuccessful) {
-                it.body.byteStream().copyTo(file.outputStream())
+        val c = if (ApkMirrorDownloadResolver.isApkMirrorUrl(resolved.url)) auroraClient else client
+        c.newCall(downloadRequest(resolved.url, resolved.referer)).execute().use {
+            if (it.isSuccessful && !it.isUnexpectedApkMirrorHtml(url)) {
+                it.body.byteStream().use { input ->
+                    file.outputStream().use { output -> input.copyTo(output) }
+                }
             }
         }
         return file
@@ -39,23 +44,26 @@ class Downloader(
 
     /** Downloads [url] to a temp file using the correct client for the URL, returns the file. Retries on transient IO errors. */
     fun downloadFile(url: String, onProgress: ((Long, Long) -> Unit)? = null): File {
+        val resolved = resolveDownloadUrl(url)
         val clientName = when {
-            url.contains("apkpure") -> "apkPureClient"
+            resolved.url.contains("apkpure") -> "apkPureClient"
+            ApkMirrorDownloadResolver.isApkMirrorUrl(resolved.url) -> "auroraClient"
             else -> "auroraClient"
         }
         val c = when {
-            url.contains("apkpure") -> apkPureClient
+            resolved.url.contains("apkpure") -> apkPureClient
+            ApkMirrorDownloadResolver.isApkMirrorUrl(resolved.url) -> auroraClient
             // Play Store and all other URLs use auroraClient (long timeouts, proper UA)
             else -> auroraClient
         }
         var lastException: Exception? = null
         repeat(3) { attempt ->
             val file = File(dir, randomUUID())
-            Log.d("Downloader", "downloadFile: attempt=${attempt + 1} url=$url client=$clientName dest=${file.absolutePath}")
+            Log.d("Downloader", "downloadFile: attempt=${attempt + 1} url=${resolved.url} client=$clientName dest=${file.absolutePath}")
             try {
-                c.newCall(downloadFileRequest(url)).execute().use { response ->
+                c.newCall(downloadFileRequest(resolved.url, resolved.referer)).execute().use { response ->
                     Log.d("Downloader", "downloadFile: response code=${response.code} success=${response.isSuccessful} attempt=${attempt + 1}")
-                    if (response.isSuccessful) {
+                    if (response.isSuccessful && !response.isUnexpectedApkMirrorHtml(url)) {
                         val total = response.body.contentLength()
                         val input = response.body.byteStream()
                         val output = file.outputStream()
@@ -75,43 +83,46 @@ class Downloader(
                         Log.d("Downloader", "downloadFile: written ${file.length()} bytes -> ${file.absolutePath}")
                         return file
                     } else {
-                        Log.e("Downloader", "downloadFile: FAILED code=${response.code} url=$url")
+                        Log.e("Downloader", "downloadFile: FAILED code=${response.code} url=${resolved.url}")
                         file.delete()
                     }
                 }
             } catch (e: java.io.IOException) {
-                Log.e("Downloader", "downloadFile: IOException on attempt ${attempt + 1} url=$url", e)
+                Log.e("Downloader", "downloadFile: IOException on attempt ${attempt + 1} url=${resolved.url}", e)
                 file.delete()
                 lastException = e
             }
         }
-        Log.e("Downloader", "downloadFile: all retries exhausted for url=$url")
+        Log.e("Downloader", "downloadFile: all retries exhausted for url=${resolved.url}")
         lastException?.let { throw it }
         return File(dir, randomUUID()) // empty file fallback
     }
 
     fun downloadStream(url: String, downloadId: Int = -1): InputStream? = runCatching {
+        val resolved = resolveDownloadUrl(url)
         val clientName = when {
-            url.contains("apkpure") -> "apkPureClient"
-            url.contains("aurora") -> "auroraClient"
+            resolved.url.contains("apkpure") -> "apkPureClient"
+            ApkMirrorDownloadResolver.isApkMirrorUrl(resolved.url) -> "auroraClient"
+            resolved.url.contains("aurora") -> "auroraClient"
             else -> "client"
         }
         val c = when {
-            url.contains("apkpure") -> apkPureClient
-            url.contains("aurora") -> auroraClient
+            resolved.url.contains("apkpure") -> apkPureClient
+            ApkMirrorDownloadResolver.isApkMirrorUrl(resolved.url) -> auroraClient
+            resolved.url.contains("aurora") -> auroraClient
             else -> client
         }
-        Log.d("Downloader", "downloadStream: url=$url downloadId=$downloadId client=$clientName")
-        val call = c.newCall(downloadRequest(url))
+        Log.d("Downloader", "downloadStream: url=${resolved.url} downloadId=$downloadId client=$clientName")
+        val call = c.newCall(downloadRequest(resolved.url, resolved.referer))
         if (downloadId >= 0) activeCalls[downloadId] = call
         val response = call.execute()
         if (downloadId >= 0) activeCalls.remove(downloadId)
-        if (response.isSuccessful) {
-            Log.d("Downloader", "downloadStream: success code=${response.code} url=$url")
+        if (response.isSuccessful && !response.isUnexpectedApkMirrorHtml(url)) {
+            Log.d("Downloader", "downloadStream: success code=${response.code} url=${resolved.url}")
             return response.body.byteStream()
         } else {
             response.close()
-            Log.e("Downloader", "downloadStream: FAILED code=${response.code} url=$url")
+            Log.e("Downloader", "downloadStream: FAILED code=${response.code} url=${resolved.url}")
         }
         return null
     }.getOrElse {
@@ -185,11 +196,29 @@ class Downloader(
         null
     }
 
-    private fun downloadRequest(url: String) = Request.Builder().url(url).build()
+    private fun resolveDownloadUrl(url: String) = runCatching {
+        val resolverClient = if (ApkMirrorDownloadResolver.isApkMirrorUrl(url)) auroraClient else client
+        ApkMirrorDownloadResolver.resolve(resolverClient, url)
+    }.getOrElse {
+        Log.e("Downloader", "resolveDownloadUrl: failed url=$url", it)
+        ResolvedDownloadUrl(url)
+    }
+
+    private fun Response.isUnexpectedApkMirrorHtml(originalUrl: String): Boolean {
+        if (!ApkMirrorDownloadResolver.isApkMirrorUrl(originalUrl)) return false
+        val type = body.contentType()
+        return type?.type == "text" && type.subtype.contains("html", ignoreCase = true)
+    }
+
+    private fun downloadRequest(url: String, referer: String? = null) = Request.Builder()
+        .url(url)
+        .apply { referer?.let { header("Referer", it) } }
+        .build()
 
     /** Request with cache disabled — prevents OkHttp CacheInterceptor from buffering large binaries. */
-    private fun downloadFileRequest(url: String) = Request.Builder()
+    private fun downloadFileRequest(url: String, referer: String? = null) = Request.Builder()
         .url(url)
+        .apply { referer?.let { header("Referer", it) } }
         .cacheControl(CacheControl.Builder().noStore().build())
         .build()
 

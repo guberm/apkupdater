@@ -66,10 +66,7 @@ class AptoideRepository(
     private fun buildStoreList() = if (prefs.useSafeStores.get()) listOf(15L, 711454L) else emptyList()
 
     private fun buildFilterList(): String {
-        val list = mutableListOf<String>()
-        if (prefs.ignoreAlpha.get()) list.add("alpha")
-        if (prefs.ignoreBeta.get()) list.add("beta")
-        return list.joinToString(separator = ",")
+        return buildFilterList(prefs.ignoreAlpha.get(), prefs.ignoreBeta.get())
     }
 
     private fun computeFilters(context: Context): String {
@@ -114,4 +111,11 @@ class AptoideRepository(
         }
     }
 
+}
+
+fun buildFilterList(ignoreAlpha: Boolean, ignoreBeta: Boolean): String {
+    val list = mutableListOf<String>()
+    if (ignoreAlpha) list.add("alpha")
+    if (ignoreBeta) list.add("beta")
+    return list.joinToString(separator = ",")
 }

@@ -168,8 +168,13 @@ fun ExpandingAnnotatedText(
     style: TextStyle = MaterialTheme.typography.bodySmall,
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    val displayText = if (text.text.endsWith('\n')) {
+        text.subSequence(0, text.length - 1)
+    } else {
+        text
+    }
     Text(
-        text =  if (text.text.last() == '\n') text.subSequence(0, text.length - 1) else text,
+        text = displayText,
         maxLines = if (isExpanded) Int.MAX_VALUE else minLines,
         style = style,
         overflow = TextOverflow.Ellipsis,

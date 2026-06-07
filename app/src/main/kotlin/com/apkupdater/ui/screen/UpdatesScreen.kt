@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -176,7 +177,7 @@ fun UpdatesScreenSuccess(
 	UpdatesFilterBar(viewModel, updates)
 
 	when {
-		displayedUpdates.isEmpty() -> EmptyGrid()
+		displayedUpdates.isEmpty() -> EmptyGrid(pluralStringResource(R.plurals.notification_update_description, 0, 0))
 		tv -> TvGrid(viewModel, displayedUpdates, updates, groupByPackage, handler)
 		!tv -> Grid(viewModel, displayedUpdates, updates, groupByPackage, handler)
 	}

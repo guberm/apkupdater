@@ -41,6 +41,9 @@ import com.apkupdater.viewmodel.SettingsViewModel
 import com.apkupdater.viewmodel.UpdatesViewModel
 import com.google.gson.GsonBuilder
 import com.kryptoprefs.preferences.KryptoBuilder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -189,11 +192,13 @@ val mainModule = module {
 
 	single { PlayHttpClient(get()) }
 
+	single<CoroutineScope> { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
+
 	viewModel { MainViewModel(get(), get()) }
 
 	viewModel { AppsViewModel(get(), get(), get()) }
 
-	viewModel { UpdatesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), androidApplication()) }
+	viewModel { UpdatesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), androidApplication()) }
 
 	viewModel { SettingsViewModel(get(), get(), WorkManager.getInstance(get()), get(), get(), get(), get()) }
 

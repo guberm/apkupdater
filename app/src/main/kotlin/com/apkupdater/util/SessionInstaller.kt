@@ -37,7 +37,6 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.io.DEFAULT_BUFFER_SIZE
 import kotlin.io.copyTo
 import kotlin.io.outputStream
-import kotlin.use
 
 
 @OptIn(ExperimentalAtomicApi::class)
@@ -66,6 +65,34 @@ class SessionInstaller(
 
     suspend fun install(id: Int, packageName: String, streams: List<InputStream>) {
         if (prefs.newInstaller.get()) installNew(id, packageName, streams) else installOld(id, packageName, streams)
+    }
+
+    suspend fun installPackage(id: Int, packageName: String, stream: InputStream) {
+        val file = File(context.cacheDir, randomUUID())
+        stream.use { input -> input.copyTo(file.outputStream()) }
+
+        try {
+            val zip = runCatching { ZipFile(file) }.getOrNull()
+            if (zip == null) {
+                install(id, packageName, file.inputStream())
+                return
+            }
+
+            zip.use { archive ->
+                val apks = archive.entries()
+                    .asSequence()
+                    .filter { !it.isDirectory && it.name.endsWith(".apk", ignoreCase = true) }
+                    .toList()
+
+                if (apks.isEmpty()) {
+                    install(id, packageName, file.inputStream())
+                } else {
+                    install(id, packageName, apks.map { archive.getInputStream(it) })
+                }
+            }
+        } finally {
+            file.delete()
+        }
     }
 
     @SuppressLint("RequestInstallPackagesPolicy")
@@ -202,6 +229,7 @@ class SessionInstaller(
             }
 
             installMutex.lock()
+            installLog.expectInstall(id)
             val pending = PendingIntent.getActivity(context, 0, intent, FLAG_MUTABLE)
             session.commit(pending.intentSender)
             session.close()
@@ -230,26 +258,7 @@ class SessionInstaller(
     }
 
     @Suppress("BlockingMethodInNonBlockingContext")
-    suspend fun installXapk(id: Int, packageName: String, stream: InputStream) {
-        // Copy file to disk.
-        // TODO: Find a way to do this without saving file
-        val file = File(context.cacheDir, randomUUID())
-        stream.copyTo(file.outputStream())
-
-        // Get entries
-        val zip = ZipFile(file)
-        val entries = zip.entries().toList()
-
-        // Install all the apks
-        // TODO: Try to install only needed apks
-        // TODO: Add root install support
-        val apks = entries.filter { it.name.contains(".apk") }.map { zip.getInputStream(it) }
-        install(id, packageName, apks)
-
-        // Cleanup
-        zip.close()
-        file.delete()
-    }
+    suspend fun installXapk(id: Int, packageName: String, stream: InputStream) = installPackage(id, packageName, stream)
 
 }
 

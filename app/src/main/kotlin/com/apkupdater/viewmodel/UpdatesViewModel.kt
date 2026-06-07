@@ -45,6 +45,7 @@ class UpdatesViewModel(
 	private val snackBar: SnackBar,
 	private val stringer: Stringer,
 	installLog: InstallLog,
+	private val applicationScope: kotlinx.coroutines.CoroutineScope,
 	private val application: Application
 ) : InstallViewModel(downloader2, installer, prefs, snackBar, stringer, installLog) {
 
@@ -93,9 +94,10 @@ class UpdatesViewModel(
 			state.value.updates().forEach { update ->
 				if (state.value.updates().any { it.id == update.id && it.isInstalling }) return@forEach
 				state.value = UpdatesUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
-				viewModelScope.launch(Dispatchers.IO) {
-					downloadAndInstall(update.id, update.packageName, update.link)
+				val job = applicationScope.launch {
+					performDownloadAndInstall(update)
 				}
+				downloadJobs[update.id] = job
 			}
 		}
 	}
@@ -137,44 +139,45 @@ class UpdatesViewModel(
 		if(installer.checkPermission()) {
 			state.value = UpdatesUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
 			val job = viewModelScope.launch(Dispatchers.IO) {
-				val customDirStr = prefs.downloadDir.get()
-				Log.d("UpdatesViewModel", "downloadAndInstall: pkg=${update.packageName} customDir='$customDirStr' linkType=${update.link::class.simpleName}")
-				if (customDirStr.isNotEmpty() && update.link is Link.Url) {
-					val treeUri = Uri.parse(customDirStr)
-					Log.d("UpdatesViewModel", "downloadAndInstall: using custom dir treeUri=$treeUri url=${update.link.link}")
-					installLog.emitProgress(AppInstallProgress(update.id, 0L, update.link.size))
-					val savedUri = downloader2.downloadToUri(update.link.link, treeUri, "${update.packageName}.apk") { curr, total ->
-						installLog.emitProgress(AppInstallProgress(update.id, curr, if (total > 0) total else update.link.size))
-					}
-					Log.d("UpdatesViewModel", "downloadAndInstall: savedUri=$savedUri")
-					if (savedUri != null) {
-						downloadedUris.getOrPut(update.id) { mutableListOf() }.add(savedUri)
-						val stream = application.contentResolver.openInputStream(savedUri)
-						Log.d("UpdatesViewModel", "downloadAndInstall: openInputStream stream=${stream != null} savedUri=$savedUri")
-						if (stream != null) {
-							// Download complete — remove from downloadJobs before install phase
-							// so that cancelInstall (triggered by install failure) doesn't cancel this coroutine
-							downloadJobs.remove(update.id)
-							installer.install(update.id, update.packageName, stream)
-						} else {
-							Log.e("UpdatesViewModel", "downloadAndInstall: stream is null for savedUri=$savedUri")
-							cancelInstall(update.id)
-						}
-					} else {
-						Log.e("UpdatesViewModel", "downloadAndInstall: downloadToUri returned null, falling back to normal download")
-						downloadJobs.remove(update.id)
-						downloadAndInstall(update.id, update.packageName, update.link)
-					}
-				} else {
-					// Play links handle custom dir copy internally in InstallViewModel
-					Log.d("UpdatesViewModel", "downloadAndInstall: proceeding (Play link handles custom dir internally, or no custom dir set)")
-					// Remove from downloadJobs before install phase so cancelInstall doesn't cancel this coroutine
-					downloadJobs.remove(update.id)
-					downloadAndInstall(update.id, update.packageName, update.link)
-				}
+				performDownloadAndInstall(update)
 			}
 			downloadJobs[update.id] = job
 			job.join()
+			downloadJobs.remove(update.id)
+		}
+	}
+
+	private suspend fun performDownloadAndInstall(update: AppUpdate) {
+		try {
+			val customDirStr = prefs.downloadDir.get()
+			Log.d("UpdatesViewModel", "downloadAndInstall: pkg=${update.packageName} customDir='$customDirStr' linkType=${update.link::class.simpleName}")
+			if (customDirStr.isNotEmpty() && update.link is Link.Url) {
+				val treeUri = Uri.parse(customDirStr)
+				Log.d("UpdatesViewModel", "downloadAndInstall: using custom dir treeUri=$treeUri url=${update.link.link}")
+				installLog.emitProgress(AppInstallProgress(update.id, 0L, update.link.size))
+				val savedUri = downloader2.downloadToUri(update.link.link, treeUri, "${update.packageName}.apk") { curr, total ->
+					installLog.emitProgress(AppInstallProgress(update.id, curr, if (total > 0) total else update.link.size))
+				}
+				Log.d("UpdatesViewModel", "downloadAndInstall: savedUri=$savedUri")
+				if (savedUri != null) {
+					downloadedUris.getOrPut(update.id) { mutableListOf() }.add(savedUri)
+					val stream = application.contentResolver.openInputStream(savedUri)
+					Log.d("UpdatesViewModel", "downloadAndInstall: openInputStream stream=${stream != null} savedUri=$savedUri")
+					if (stream != null) {
+						installer.installPackage(update.id, update.packageName, stream)
+					} else {
+						Log.e("UpdatesViewModel", "downloadAndInstall: stream is null for savedUri=$savedUri")
+						cancelInstall(update.id)
+					}
+				} else {
+					Log.e("UpdatesViewModel", "downloadAndInstall: downloadToUri returned null, falling back to normal download")
+					downloadAndInstall(update.id, update.packageName, update.link)
+				}
+			} else {
+				Log.d("UpdatesViewModel", "downloadAndInstall: proceeding (Play link handles custom dir internally, or no custom dir set)")
+				downloadAndInstall(update.id, update.packageName, update.link)
+			}
+		} finally {
 			downloadJobs.remove(update.id)
 		}
 	}
@@ -199,9 +202,18 @@ class UpdatesViewModel(
 		filter { it.version != it.oldVersion }
 	} else this
 
+	private fun List<AppUpdate>.filterIgnoredReleaseLabels() = filter {
+		shouldKeepUpdateForIgnoredReleaseLabels(
+			version = it.version,
+			ignoreAlpha = prefs.ignoreAlpha.get(),
+			ignoreBeta = prefs.ignoreBeta.get()
+		)
+	}
+
 	private fun setSuccess(updates: List<AppUpdate>) = updates
 		.filterIgnoredVersions(prefs.ignoredVersions.get())
 		.filterSameVersion()
+		.filterIgnoredReleaseLabels()
 		.let {
 			state.value = UpdatesUiState.Success(it)
 			badger.changeUpdatesBadge(it.size.toString())
@@ -217,4 +229,14 @@ class UpdatesViewModel(
 		}
 	}
 
+}
+
+internal fun shouldKeepUpdateForIgnoredReleaseLabels(
+	version: String,
+	ignoreAlpha: Boolean,
+	ignoreBeta: Boolean
+): Boolean = when {
+	ignoreAlpha && version.contains("alpha", ignoreCase = true) -> false
+	ignoreBeta && version.contains("beta", ignoreCase = true) -> false
+	else -> true
 }

@@ -7,7 +7,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.apkupdater.R
 import com.apkupdater.data.snack.TextSnack
-import com.apkupdater.data.ui.ApkMirrorSource
 import com.apkupdater.data.ui.AppInstallProgress
 import com.apkupdater.data.ui.AppInstallStatus
 import com.apkupdater.data.ui.AppUpdate
@@ -33,15 +32,10 @@ abstract class InstallViewModel(
 ): ViewModel() {
 
     fun install(update: AppUpdate, uriHandler: UriHandler) {
-        when (update.source) {
-            ApkMirrorSource -> uriHandler.openUri((update.link as Link.Url).link)
-            else -> {
-                if (prefs.rootInstall.get()) {
-                    downloadAndRootInstall(update)
-                } else {
-                    downloadAndInstall(update)
-                }
-            }
+        if (prefs.rootInstall.get()) {
+            downloadAndRootInstall(update)
+        } else {
+            downloadAndInstall(update)
         }
     }
 
@@ -119,9 +113,23 @@ abstract class InstallViewModel(
             }
             is Link.Url -> {
                 installLog.emitProgress(AppInstallProgress(id, 0L, link.size))
-                installer.install(id, packageName, downloader.downloadStream(link.link, id)!!)
+                val stream = downloader.downloadStream(link.link, id)
+                if (stream == null) {
+                    Log.e("InstallViewModel", "downloadAndInstall: download failed for $packageName")
+                    cancelInstall(id)
+                } else {
+                    installer.installPackage(id, packageName, stream)
+                }
             }
-            is Link.Xapk -> installer.installXapk(id, packageName, downloader.downloadStream(link.link, id)!!)
+            is Link.Xapk -> {
+                val stream = downloader.downloadStream(link.link, id)
+                if (stream == null) {
+                    Log.e("InstallViewModel", "downloadAndInstall: XAPK download failed for $packageName")
+                    cancelInstall(id)
+                } else {
+                    installer.installXapk(id, packageName, stream)
+                }
+            }
         }
     }.getOrElse {
         Log.e("InstallViewModel", "Error in downloadAndInstall.", it)
