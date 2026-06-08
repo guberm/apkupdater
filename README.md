@@ -23,7 +23,7 @@ The 3.x branch is a full rewrite using modern technologies like **Jetpack Compos
 * **Languages**: Albanian, Arabic, Burmese, Dutch, English, German, Hebrew, Hungarian, Indonesian, Italian, Korean, Malay, Portuguese, Romanian, Russian, Simplified Chinese, Spanish, Traditional Chinese, Turkish.
 
 # Download
-* [Debug Release (3.0.6)](https://github.com/guberm/apkupdater-private/releases/download/3.0.6/com.apkupdater-debug.apk)
+* [Debug Release (3.0.7)](https://github.com/guberm/apkupdater-private/releases/download/3.0.7/com.apkupdater-debug.apk)
 * [Upstream stable releases](https://github.com/rumboalla/apkupdater/releases)
 
 # Translations
