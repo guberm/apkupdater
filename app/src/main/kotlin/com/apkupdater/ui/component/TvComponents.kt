@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -88,6 +89,7 @@ fun TvInstallButton(
     val installing = alternatives.firstOrNull { it.isInstalling }
     ElevatedButton(
         modifier = Modifier.padding(top = 0.dp, bottom = 8.dp, start = 8.dp, end = 8.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         onClick = {
             if (installing != null) onCancel()
             else if (alternatives.size > 1) expanded = true
@@ -106,10 +108,10 @@ fun TvInstallButton(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(stringResource(if (alternatives.size > 1) R.string.choose_source else R.string.install_cd))
                 alternatives.forEach { alt ->
                     SourceIcon(alt.source, Modifier.size(20.dp))
                 }
+                Text(stringResource(if (alternatives.size > 1) R.string.choose_source else R.string.install_cd))
             }
         }
     }
