@@ -19,7 +19,7 @@ The 3.x branch is a full rewrite using modern technologies like **Jetpack Compos
 * **Alpha/Beta filtering** is enforced across update results when the ignore toggles are enabled.
 * Pull-down refresh uses the same loading flow as the Update refresh button.
 * Refreshed loading UI with an animated refresh indicator and pulsing update cards.
-* Grouped updates with multiple sources use compact source icons in the install selector.
+* TV install buttons use compact source-only icons, including grouped updates with multiple sources.
 * Empty update results show a clear **No updates found** message.
 * Supports **installs without user interaction** on Android 12+.
 * **Root install** of updates.
@@ -27,7 +27,7 @@ The 3.x branch is a full rewrite using modern technologies like **Jetpack Compos
 * **Languages**: Albanian, Arabic, Burmese, Dutch, English, German, Hebrew, Hungarian, Indonesian, Italian, Korean, Malay, Portuguese, Romanian, Russian, Simplified Chinese, Spanish, Traditional Chinese, Turkish.
 
 # Download
-* [Debug Release (3.0.8)](https://github.com/guberm/apkupdater-private/releases/download/3.0.8/com.apkupdater-debug.apk)
+* [Debug Release (3.0.9)](https://github.com/guberm/apkupdater-private/releases/download/3.0.9/com.apkupdater-debug.apk)
 * [Upstream stable releases](https://github.com/rumboalla/apkupdater/releases)
 
 # Translations

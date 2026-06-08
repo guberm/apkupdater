@@ -108,12 +108,8 @@ fun TvInstallButton(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val multipleSources = alternatives.size > 1
                 alternatives.forEach { alt ->
                     SourceIcon(alt.source, Modifier.size(20.dp))
-                }
-                if (!multipleSources) {
-                    Text(stringResource(R.string.install_cd))
                 }
             }
         }
