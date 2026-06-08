@@ -78,12 +78,7 @@ fun UpdateImage(
 			DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
 				alternatives.forEach { alt ->
 					DropdownMenuItem(
-						text = {
-							Column {
-								MediumText(alt.source.name)
-								SmallText(alt.version)
-							}
-						},
+						text = { SmallText(alt.version) },
 						leadingIcon = { SourceIcon(alt.source, Modifier.size(20.dp)) },
 						onClick = { expanded = false; onInstall(alt) }
 					)

@@ -17,13 +17,17 @@ The 3.x branch is a full rewrite using modern technologies like **Jetpack Compos
 * **APKM/APKS/XAPK package archive install** support after download.
 * **Bulk download and install** keeps running when the TV app is sent to the background.
 * **Alpha/Beta filtering** is enforced across update results when the ignore toggles are enabled.
+* Pull-down refresh uses the same loading flow as the Update refresh button.
+* Refreshed loading UI with an animated refresh indicator and pulsing update cards.
+* Grouped updates with multiple sources use compact source icons in the install selector.
+* Empty update results show a clear **No updates found** message.
 * Supports **installs without user interaction** on Android 12+.
 * **Root install** of updates.
 * No ads. No tracking.
 * **Languages**: Albanian, Arabic, Burmese, Dutch, English, German, Hebrew, Hungarian, Indonesian, Italian, Korean, Malay, Portuguese, Romanian, Russian, Simplified Chinese, Spanish, Traditional Chinese, Turkish.
 
 # Download
-* [Debug Release (3.0.7)](https://github.com/guberm/apkupdater-private/releases/download/3.0.7/com.apkupdater-debug.apk)
+* [Debug Release (3.0.8)](https://github.com/guberm/apkupdater-private/releases/download/3.0.8/com.apkupdater-debug.apk)
 * [Upstream stable releases](https://github.com/rumboalla/apkupdater/releases)
 
 # Translations

@@ -22,6 +22,7 @@
     <string name="filter_search_hint">Search...</string>
     <string name="settings_ignored">Ignored Apps</string>
     <string name="settings_ignored_empty">No ignored apps</string>
+    <string name="no_updates_found">No updates found</string>
     <string name="settings_delete_after_install">Delete APK after installation</string>
     <string name="settings_group_by_default">Group Apps by Default</string>
     <string name="settings_download_dir">Download Directory</string>

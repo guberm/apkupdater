@@ -37,7 +37,7 @@ class MainViewModel(
 	) = viewModelScope.launch {
 		isRefreshing.value = true
 		appsViewModel.refresh(false)
-		updatesViewModel.refresh(false).invokeOnCompletion {
+		updatesViewModel.refresh().invokeOnCompletion {
 			isRefreshing.value = false
 		}
 	}
