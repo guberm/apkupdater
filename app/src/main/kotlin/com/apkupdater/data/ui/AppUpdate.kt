@@ -13,6 +13,7 @@ data class AppUpdate(
 	val iconUri: Uri = Uri.EMPTY,
 	val link: Link = Link.Empty,
 	val whatsNew: String = "",
+	val sourceUrl: String = "",
 	val isInstalling: Boolean = false,
 	val total: Long = 0L,
 	val progress: Long = 0L,

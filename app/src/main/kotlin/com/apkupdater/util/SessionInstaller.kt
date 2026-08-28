@@ -22,9 +22,6 @@ import com.apkupdater.data.ui.AppInstallStatus
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.ui.activity.MainActivity
 import com.topjohnwu.superuser.Shell
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -52,12 +49,16 @@ class SessionInstaller(
     init {
         // Cleanup old sessions
         val installer = context.packageManager.packageInstaller
-        installer.mySessions.forEach { installer.abandonSession(it.sessionId) }
+        runCatching {
+            installer.mySessions.forEach { session ->
+                runCatching { installer.abandonSession(session.sessionId) }
+                    .onFailure { Log.w("SessionInstaller", "Unable to abandon stale session ${session.sessionId}", it) }
+            }
+        }.onFailure { Log.w("SessionInstaller", "Unable to inspect stale install sessions", it) }
     }
 
     private val installMutex = AtomicBoolean(false)
     private val installNewMutex = Mutex()
-    private val scope = CoroutineScope(Dispatchers.IO)
 
     suspend fun install(id: Int, packageName: String, stream: InputStream) {
         if (prefs.newInstaller.get()) installNew(id, packageName, listOf(stream)) else installOld(id, packageName, listOf(stream))
@@ -118,22 +119,33 @@ class SessionInstaller(
                             Log.i("InstallViewModel", "installNew: STATUS_PENDING_USER_ACTION id=$id")
                             installLog.currentInstallId = intent.getAppId() ?: 0
                             // Launch intent to confirm install (onReceive runs on main thread — no scope.launch needed)
-                            intent.getIntentExtra()?.let {
-                                it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                runCatching { context.startActivity(it) }
-                                    .onFailure { e -> Log.e("InstallViewModel", "installNew: startActivity failed id=$id", e) }
+                            val confirmationIntent = intent.getIntentExtra()
+                            if (confirmationIntent == null) {
+                                Log.e("InstallViewModel", "installNew: missing confirmation intent id=$id")
+                                installLog.emitStatus(AppInstallStatus(false, id, true))
+                                runCatching { context.unregisterReceiver(this) }
+                                if (continuation.isActive) continuation.resume(false) {_, _, _ -> }
+                            } else {
+                                confirmationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                runCatching { context.startActivity(confirmationIntent) }
+                                    .onFailure { e ->
+                                        Log.e("InstallViewModel", "installNew: startActivity failed id=$id", e)
+                                        installLog.emitStatus(AppInstallStatus(false, id, true))
+                                        runCatching { context.unregisterReceiver(this) }
+                                        if (continuation.isActive) continuation.resume(false) {_, _, _ -> }
+                                    }
                             }
                         }
                         PackageInstaller.STATUS_SUCCESS -> {
                             Log.i("InstallViewModel", "installNew: SUCCESS id=$id pkg=$packageName")
                             installLog.emitStatus(AppInstallStatus(true, id, true))
-                            context.unregisterReceiver(this)
+                            runCatching { context.unregisterReceiver(this) }
                             if (continuation.isActive) continuation.resume(true) {_, _, _ -> }
                         }
                         else -> {
                             Log.i("InstallViewModel", "installNew: FAILURE status=$extra id=$id pkg=$packageName")
                             installLog.emitStatus(AppInstallStatus(false, id, true))
-                            context.unregisterReceiver(this)
+                            runCatching { context.unregisterReceiver(this) }
                             if (continuation.isActive) continuation.resume(false) {_, _, _ -> }
                         }
                     }

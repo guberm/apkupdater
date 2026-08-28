@@ -23,8 +23,6 @@
     <string name="root_install_not_supported">Bu programmanyň "root" gurnamagy goldanylmaýar.</string>
 
     // Settings
-    <string name="settings_portrait_columns">Portret sütünler</string>
-    <string name="settings_landscape_columns">Uzunlygyna sütünler</string>
     <string name="play_text_animations">Tekst animasiýalaryny oýnaň</string>
     <string name="settings_sources">Çeşmeler</string>
     <string name="settings_ui">UI</string>
@@ -35,7 +33,6 @@
     <string name="settings_alarm_daily">Gündelik</string>
     <string name="settings_alarm_3day">3-gün</string>
     <string name="settings_alarm_weekly">Hepdelik</string>
-    <string name="settings_android_tv_ui" translatable="false">Android TV UI</string>
     <string name="ignore_alpha">Alpha gerek däl</string>
     <string name="ignore_beta">Beta gerek däl</string>
     <string name="ignore_preRelease">Test edilmedik ýüklemeleri gerek däl</string>

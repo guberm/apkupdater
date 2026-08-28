@@ -51,20 +51,27 @@ class GitLabRepository(
         val releases = service.getReleases(user, repo)
             .filter { Version(filterVersionTag(it.tag_name)) > Version(currentVersion) }
 
-        if (releases.isNotEmpty()) {
+        val release = releases.firstOrNull()
+        if (release != null) {
             val app = apps?.getApp(packageName)
+            val apkUrl = getApkUrl(packageName, release)
+            if (apkUrl.isBlank()) {
+                emit(emptyList())
+                return@flow
+            }
             emit(listOf(
                 AppUpdate(
                 name = repo,
                 packageName = packageName,
-                version = releases[0].tag_name,
+                version = release.tag_name,
                 oldVersion = app?.version ?: "?",
                 versionCode = 0L,
                 oldVersionCode = app?.versionCode ?: 0L,
                 source = GitLabSource,
-                link = Link.Url(getApkUrl(packageName, releases[0])),
-                whatsNew = releases[0].description,
-                iconUri = if (apps == null) releases[0].author.avatar_url.toUri() else Uri.EMPTY
+                link = Link.Url(apkUrl),
+                whatsNew = release.description,
+                iconUri = if (apps == null) release.author.avatar_url.toUri() else Uri.EMPTY,
+                sourceUrl = "https://gitlab.com/$user/$repo/-/releases/${release.tag_name}"
             )))
         } else {
             emit(emptyList())

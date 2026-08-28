@@ -1,74 +1,42 @@
-# APKUpdater [![](https://github.com/rumboalla/apkupdater/workflows/Android%20Build/badge.svg)](https://github.com/rumboalla/apkupdater/actions?query=workflow%3A%22Android+Build%22)
-**APKUpdater** is an open source tool that simplifies the process of **finding updates** for your installed apps.  
-It provides similar functionality to an app store, but instead of depending on a single source, it aggregates the results from **APKMirror**, **Aptoide**, **F-Droid**, **IzzyOnDroid**, **APKPure**, **GitLab** and **GitHub**.
+# APKUpdater TV
 
-The 3.x branch is a full rewrite using modern technologies like **Jetpack Compose**, **Flow** and **WorkManager**.
+APKUpdater TV finds and installs updates for apps already installed on Android TV. It aggregates APKMirror, Aptoide, F-Droid, IzzyOnDroid, APKPure, GitLab, GitHub, and Google Play instead of depending on a single store.
 
-# Features
-* **Update Sources**: Find updates from **APKMirror**, **Aptoide**, **F-Droid**, **IzzyOnDroid**, **APKPure**, **GitLab**, **GitHub** and **Google Play**.
-* **Search Sources**: Find new apps to install from **APKMirror**, **Aptoide**, **F-Droid**, **IzzyOnDroid**, **APKPure**, **GitLab**, **GitHub** and **Google Play**.
-* Schedule **background update checks** and receive a **notification** when updates are found.
-* Supports **Android 6** (**23**) to **Android 16** (**36**).
-* Supports **Android TV**.
-* **Material Design 3** with **Dark**, **Light** and **System** theme support.
-* Supports **Material You** on Android 12+.
-* **Direct install** of updates for sources that support it.
-* **Direct APKMirror downloads** from the Update button instead of opening the APKMirror website.
-* **APKM/APKS/XAPK package archive install** support after download.
-* **Bulk download and install** keeps running when the TV app is sent to the background.
-* **Alpha/Beta filtering** is enforced across update results when the ignore toggles are enabled.
-* Pull-down refresh uses the same loading flow as the Update refresh button.
-* Refreshed loading UI with an animated refresh indicator and pulsing update cards.
-* TV install buttons use compact source-only icons, including grouped updates with multiple sources.
-* Empty update results show a clear **No updates found** message.
-* Supports **installs without user interaction** on Android 12+.
-* **Root install** of updates.
-* No ads. No tracking.
-* **Languages**: Albanian, Arabic, Burmese, Dutch, English, German, Hebrew, Hungarian, Indonesian, Italian, Korean, Malay, Portuguese, Romanian, Russian, Simplified Chinese, Spanish, Traditional Chinese, Turkish.
+This branch is TV-only. A Leanback-capable Android TV device is required; phone and tablet launchers and layouts are intentionally not included.
 
-# Download
-* [Debug Release (3.0.9)](https://github.com/guberm/apkupdater-private/releases/download/3.0.9/com.apkupdater-debug.apk)
-* [Upstream stable releases](https://github.com/rumboalla/apkupdater/releases)
+## Features
 
-# Translations
-If you want to help with translations, open a [Pull Request](https://github.com/rumboalla/apkupdater/pulls) or an [Issue](https://github.com/rumboalla/apkupdater/issues) with the translated [strings.xml](https://github.com/rumboalla/apkupdater/blob/3.x/app/src/main/res/values/strings.xml).
+- TV-first, D-pad-friendly interface built with Jetpack Compose and Material 3.
+- Update and search results from APKMirror, Aptoide, F-Droid, IzzyOnDroid, APKPure, GitLab, GitHub, and Google Play.
+- Direct APK, APKM, APKS, XAPK, and split-package installation where supported.
+- A **Source** button that opens the provider page for each result.
+- Background update checks and notifications.
+- Grouped updates with a source selector.
+- Alpha, beta, pre-release, architecture, signature, and Android TV compatibility filters.
+- Optional root installation and unattended installation on supported Android versions.
+- Dark, light, and system themes.
+- No ads and no tracking.
 
-* Albanian by [Jvr2022](https://github.com/Jvr2022)
-* Arabic by [Muhammadbahaa2001](https://github.com/Muhammadbahaa2001)
-* Burmese by [kyawlinnthant](https://github.com/kyawlinnthant)
-* Dutch by [AnonymousWP](https://github.com/AnonymousWP)
-* German by [peat80](https://github.com/peat80)
-* Hebrew by [electriquo](https://github.com/electriquo)
-* Hungarian by [gidano](https://github.com/gidano)
-* Indonesian by [HazakuraID](https://github.com/HazakuraID)
-* Italian by [NicKoehler](https://github.com/NicKoehler)
-* Korean by [Apious](https://github.com/Apious)
-* Malay by [HazakuraID](https://github.com/HazakuraID)
-* Portuguese by [zekabra](https://github.com/zekabra)
-* Romanian by [StormProductionsMusic](https://github.com/StormProductionsMusic)
-* Russian by [Xenorant](https://github.com/Xenorant)
-* Simplified Chinese by [Nriver](https://github.com/Nriver)
-* Traditional Chinese by [abc0922001](https://github.com/abc0922001)
-* Turkish by [kyoyacchi](https://github.com/kyoyacchi)
-* Japanese by [anonym499](https://github.com/anonym499)
+## Requirements
 
-# Feedback
-- To give feedback and request new features go to [Discussions](https://github.com/rumboalla/apkupdater/discussions).
-- To report bugs, crashes, typos and translations go to [Issues](https://github.com/rumboalla/apkupdater/issues).
+- Android TV with Leanback support.
+- Android 6.0 (API 23) or newer.
+- Permission to install unknown apps for direct installation.
 
-# Screenshots
+## Download
 
-| ![1](https://github.com/rumboalla/apkupdater/assets/21153554/b5b4943b-e12a-43e2-a056-26d6f06f9bc4) | ![2](https://github.com/rumboalla/apkupdater/assets/21153554/c4679c1b-09d4-429d-9160-77d4d33b0a0f) | ![3](https://github.com/rumboalla/apkupdater/assets/21153554/7b89c5a6-672c-44e4-836e-e01f51f33591) | ![4](https://github.com/rumboalla/apkupdater/assets/21153554/7ec15783-e719-4feb-9e07-a14c0f1defcc) |
-|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+- [APKUpdater TV 3.1.0](https://github.com/guberm/apkupdater-private/releases/download/3.1.0/com.apkupdater-release.apk)
 
-| ![5](https://github.com/rumboalla/apkupdater/assets/21153554/bbf1132a-b0b6-4890-aed7-8fe95c0da11b) | ![6](https://github.com/rumboalla/apkupdater/assets/21153554/32236bfb-b53e-4999-8363-e957fa8f77a9) |
-|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+## Build
 
-# Other Projects
-* [CoolRs](https://github.com/rumboalla/coolrs): A collection of Android RenderScript effects. 
-* [KryptoPrefs](https://github.com/rumboalla/KryptoPrefs): Kotlin library for handling encrypted SharedPreferences.
-* [KryptoStore](https://github.com/rumboalla/kryptostore): A thin wrapper around Jetpack Datastore Preferences that provides useful features.
+```bash
+./gradlew test lint assembleDebug
+```
 
-# License
-Copyright &copy; 2016-2024 rumboalla.  
-Licensed under the [GNU General Public License v3](https://www.gnu.org/licenses/gpl-3.0.en.html).
+Release builds use the signing configuration in `local.properties`; when it is absent, Gradle falls back to the debug key.
+
+## License
+
+Copyright © 2016–2024 rumboalla.
+
+Licensed under the [GNU General Public License v3](LICENSE).

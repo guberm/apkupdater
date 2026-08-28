@@ -32,7 +32,6 @@ import com.apkupdater.util.Stringer
 import com.apkupdater.util.Themer
 import com.apkupdater.util.UpdatesNotification
 import com.apkupdater.util.addUserAgentInterceptor
-import com.apkupdater.util.isAndroidTv
 import com.apkupdater.util.play.PlayHttpClient
 import com.apkupdater.viewmodel.AppsViewModel
 import com.apkupdater.viewmodel.MainViewModel
@@ -148,7 +147,7 @@ val mainModule = module {
 		Downloader(client, apkPureClient, auroraClient, dir, androidContext())
 	}
 
-	single { ApkMirrorRepository(get(), get(), androidContext().packageManager) }
+	single { ApkMirrorRepository(get(), get()) }
 
 	single { AppsRepository(get(), get()) }
 
@@ -172,7 +171,7 @@ val mainModule = module {
 
 	single { KryptoBuilder.nocrypt(get(), androidContext().getString(R.string.app_name)) }
 
-	single { Prefs(get(), androidContext().isAndroidTv()) }
+	single { Prefs(get()) }
 
 	single { UpdatesNotification(get()) }
 

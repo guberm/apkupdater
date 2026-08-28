@@ -23,8 +23,6 @@
     <string name="root_install_not_supported">இந்த செயலியை ரூட் மூலம் நிறுவு இயலாது.</string>
 
     // Settings
-    <string name="settings_portrait_columns">செங்குத்து நெடுவரிசைகள்</string>
-    <string name="settings_landscape_columns">கிடைமட்ட நெடுவரிசைகள்</string>
     <string name="play_text_animations">எழுத்து அனிமேஷன்களை இயக்கவும்</string>
     <string name="settings_sources">மூலங்கள்</string>
     <string name="settings_ui">பயனர் இடைமுகம்</string>
@@ -35,7 +33,6 @@
     <string name="settings_alarm_daily">தினசரி</string>
     <string name="settings_alarm_3day">3-நாட்கள்</string>
     <string name="settings_alarm_weekly">வாரந்தோறும்</string>
-    <string name="settings_android_tv_ui" translatable="false">Android TV UI</string>
     <string name="ignore_alpha">ஆல்ஃபா வெளியீட்டைப் விளக்கவும்</string>
     <string name="ignore_beta">பீட்டா வெளியீட்டைப் விளக்கவும்</string>
     <string name="ignore_preRelease">முன் வெளியீட்டைப் விளக்கவும்</string>

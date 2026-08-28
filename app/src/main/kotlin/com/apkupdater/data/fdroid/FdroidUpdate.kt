@@ -12,17 +12,22 @@ data class FdroidUpdate(
 )
 
 fun FdroidUpdate.toAppUpdate(current: AppInstalled?, source: Source, url: String) = AppUpdate(
-    app.localized["en-US"]?.name ?: app.name,
-    app.packageName,
-    apk.versionName,
-    current?.version ?: "?",
-    apk.versionCode,
-    current?.versionCode ?: 0L,
-    source,
-    if(app.icon.isEmpty())
+    name = app.localized["en-US"]?.name ?: app.name,
+    packageName = app.packageName,
+    version = apk.versionName,
+    oldVersion = current?.version ?: "?",
+    versionCode = apk.versionCode,
+    oldVersionCode = current?.versionCode ?: 0L,
+    source = source,
+    iconUri = if(app.icon.isEmpty())
         "https://f-droid.org/assets/ic_repo_app_default.png".toUri()
     else
         "${url}icons-640/${app.icon}".toUri(),
-    Link.Url("$url${apk.apkName}"),
-    if (current != null) app.localized["en-US"]?.whatsNew.orEmpty() else app.localized["en-US"]?.summary.orEmpty()
+    link = Link.Url("$url${apk.apkName}"),
+    whatsNew = if (current != null) app.localized["en-US"]?.whatsNew.orEmpty() else app.localized["en-US"]?.summary.orEmpty(),
+    sourceUrl = if (url.contains("izzysoft", ignoreCase = true)) {
+        "https://apt.izzysoft.de/fdroid/index/apk/${app.packageName}"
+    } else {
+        "https://f-droid.org/packages/${app.packageName}/"
+    }
 )

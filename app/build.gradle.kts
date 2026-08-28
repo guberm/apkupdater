@@ -23,8 +23,8 @@ android {
         applicationId = "com.apkupdater" + System.getenv("BUILD_TAG").orEmpty()
         minSdk = 23
         targetSdk = 36
-        versionCode = if (buildNumber.isEmpty()) 58 else buildNumber.toInt()
-        versionName = if (buildNumber.isEmpty()) "3.0.9" else "0.0.$buildNumber"
+        versionCode = if (buildNumber.isEmpty()) 59 else buildNumber.toInt()
+        versionName = if (buildNumber.isEmpty()) "3.1.0" else "0.0.$buildNumber"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
@@ -93,7 +93,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     implementation("androidx.navigation:navigation-compose:2.9.7")
     implementation("androidx.navigation:navigation-runtime-ktx:2.9.7")
-    implementation("androidx.tv:tv-foundation:1.0.0-alpha12")
     implementation("androidx.work:work-runtime-ktx:2.11.1")
     implementation("com.github.rumboalla.KryptoPrefs:kryptoprefs-gson:0.4.3")
     implementation("com.github.rumboalla.KryptoPrefs:kryptoprefs:0.4.3")

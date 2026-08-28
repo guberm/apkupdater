@@ -22,14 +22,17 @@ data class AppExistsResponseApk(
 )
 
 fun AppExistsResponseApk.toAppUpdate(app: AppInstalled, release: AppExistsResponseRelease) = AppUpdate(
-	app.name,
-	app.packageName,
-	release.version,
-	app.version,
-	versionCode,
-	app.versionCode,
-	ApkMirrorSource,
-	app.iconUri,
-	Link.Url("https://www.apkmirror.com$link"),
-	release.whatsNew.orEmpty()
+	name = app.name,
+	packageName = app.packageName,
+	version = release.version,
+	oldVersion = app.version,
+	versionCode = versionCode,
+	oldVersionCode = app.versionCode,
+	source = ApkMirrorSource,
+	iconUri = app.iconUri,
+	link = Link.Url("https://www.apkmirror.com$link"),
+	whatsNew = release.whatsNew.orEmpty(),
+	sourceUrl = (release.link ?: link).let {
+		if (it.startsWith("http://") || it.startsWith("https://")) it else "https://www.apkmirror.com$it"
+	}
 )

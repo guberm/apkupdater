@@ -22,8 +22,6 @@
     <string name="install_failure">%1$s ההתקנה נכשלה.</string>
 
     // Settings
-    <string name="settings_portrait_columns">עמודות לרוחב</string>
-    <string name="settings_landscape_columns">עמודות לאורך</string>
     <string name="settings_sources">מקורות</string>
     <string name="settings_ui">ממשק משתמש</string>
     <string name="settings_alarm">התרעה</string>
@@ -33,7 +31,6 @@
     <string name="settings_alarm_daily">יומי</string>
     <string name="settings_alarm_3day">תלת-יומי</string>
     <string name="settings_alarm_weekly">שבועי</string>
-    <string name="settings_android_tv_ui" translatable="false">Android TV ממשק משתמש עבור</string>
     <string name="ignore_alpha">התעלם מאלפא</string>
     <string name="ignore_beta">התעלם מביטא</string>
     <string name="ignore_preRelease">התעלם משחרור מוקדם</string>

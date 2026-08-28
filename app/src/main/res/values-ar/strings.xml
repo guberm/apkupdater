@@ -23,8 +23,6 @@
     <string name="root_install_not_supported">تثبيت هذا التطبيق من خلال الروت غير مدعوم.</string>
 
     // Settings
-    <string name="settings_portrait_columns">أعمدة عمودية</string>
-    <string name="settings_landscape_columns">أعمدة أفقية</string>
     <string name="play_text_animations">تشغيل الرسوم المتحركة النصية</string>
     <string name="settings_sources">المصادر</string>
     <string name="settings_ui">الواجهة</string>
@@ -35,7 +33,6 @@
     <string name="settings_alarm_daily">يومياً</string>
     <string name="settings_alarm_3day">3 أيام</string>
     <string name="settings_alarm_weekly">أسبوعياً</string>
-    <string name="settings_android_tv_ui" translatable="false">Android TV واجهة</string>
     <string name="ignore_alpha">تجاهل الإصدارات الألفا</string>
     <string name="ignore_beta">تجاهل الإصدارات التجريبية</string>
     <string name="ignore_preRelease">تجاهل الإصدارات المسبقة</string>

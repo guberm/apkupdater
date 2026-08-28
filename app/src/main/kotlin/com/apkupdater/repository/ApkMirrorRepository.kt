@@ -1,6 +1,5 @@
 package com.apkupdater.repository
 
-import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.core.net.toUri
@@ -19,7 +18,6 @@ import com.apkupdater.data.ui.getVersionCode
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.service.ApkMirrorService
 import com.apkupdater.util.combine
-import com.apkupdater.util.isAndroidTv
 import com.apkupdater.util.orFalse
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
@@ -29,8 +27,7 @@ import org.jsoup.Jsoup
 
 class ApkMirrorRepository(
     private val service: ApkMirrorService,
-    private val prefs: Prefs,
-    packageManager: PackageManager
+    private val prefs: Prefs
 ) {
 
     private val deviceArch = when {
@@ -45,7 +42,6 @@ class ApkMirrorRepository(
         val archOptions = listOf("auto", "arm64-v8a", "armeabi-v7a", "x86_64", "x86")
     }
 
-    private val isAndroidTV = packageManager.isAndroidTv()
     private val api = Build.VERSION.SDK_INT
 
     suspend fun updates(apps: List<AppInstalled>) = flow {
@@ -60,22 +56,22 @@ class ApkMirrorRepository(
         val searchQuery = "/?post_type=app_release&searchtype=app&s="
         val doc = Jsoup.connect("$baseUrl$searchQuery$text").get()
         val row = doc.select("div.appRow")
-        val a = row.select("a.byDeveloper")
-        val h5 = row.select("h5.appRowTitle").take(a.size)
-        val img = row.select("img")
-        a.removeAt(0)
-        img.removeAt(0)
-        val result = (0 until a.size).map {
+        val developers = row.select("a.byDeveloper").drop(1)
+        val titles = row.select("h5.appRowTitle")
+        val images = row.select("img").drop(1)
+        val count = minOf(developers.size, titles.size, images.size)
+        val result = (0 until count).map {
             AppUpdate(
-                name = h5[it].attr("title"),
-                link = Link.Url("$baseUrl${h5[it].selectFirst("a")?.attr("href")}"),
-                iconUri = "$baseUrl${img[it].attr("src")}".replace("=32", "=128").toUri(),
+                name = titles[it].attr("title"),
+                link = Link.Empty,
+                iconUri = "$baseUrl${images[it].attr("src")}".replace("=32", "=128").toUri(),
                 version = "?",
                 oldVersion = "?",
                 versionCode = 0L,
                 oldVersionCode = 0L,
                 source = ApkMirrorSource,
-                packageName = a[it].text() // Developer name in this case
+                packageName = developers[it].text(), // Developer name in this case
+                sourceUrl = "$baseUrl${titles[it].selectFirst("a")?.attr("href")}"
             )
         }
         emit(Result.success(result))
@@ -104,7 +100,7 @@ class ApkMirrorRepository(
                 .filter { filterAndroidTv(it) }
                 .filter { filterWearOS(it) }
                 .maxByOrNull { it.versionCode }
-                ?.toAppUpdate(apps.getApp(data.pname)!!, data.release)
+                ?.let { apk -> apps.getApp(data.pname)?.let { app -> apk.toAppUpdate(app, data.release) } }
         }
 
     private fun filterSignature(apk: AppExistsResponseApk, signature: String?) = when {
@@ -127,17 +123,8 @@ class ApkMirrorRepository(
     }
 
     private fun filterAndroidTv(apk: AppExistsResponseApk): Boolean {
-        if (!isAndroidTV) {
-            // Filter out standalone AndroidTV apps if we are not an AndroidTV device
-            if(apk.capabilities?.contains("leanback_standalone").orFalse()) {
-                return false
-            }
-        } else {
-            // Filter out apps that don't have leanback if we are an AndroidTV device
-            return (apk.capabilities?.contains("leanback_standalone").orFalse()
-                    || apk.capabilities?.contains("leanback").orFalse())
-        }
-        return true
+        return apk.capabilities?.contains("leanback_standalone").orFalse()
+                || apk.capabilities?.contains("leanback").orFalse()
     }
 
     private fun filterWearOS(apk: AppExistsResponseApk): Boolean {

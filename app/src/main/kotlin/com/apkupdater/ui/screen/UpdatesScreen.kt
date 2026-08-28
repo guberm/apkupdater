@@ -34,20 +34,16 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.apkupdater.R
 import com.apkupdater.data.ui.AppUpdate
-import com.apkupdater.prefs.Prefs
 import com.apkupdater.ui.component.DefaultErrorScreen
 import com.apkupdater.ui.component.DownloadIcon
 import com.apkupdater.ui.component.EmptyGrid
-import com.apkupdater.ui.component.InstalledGrid
 import com.apkupdater.ui.component.LoadingGrid
 import com.apkupdater.ui.component.RefreshIcon
 import com.apkupdater.ui.component.TvInstalledGrid
 import com.apkupdater.ui.component.TvUpdateItem
-import com.apkupdater.ui.component.UpdateItem
 import com.apkupdater.ui.theme.statusBarColor
 import com.apkupdater.viewmodel.UpdatesFilter
 import com.apkupdater.viewmodel.UpdatesViewModel
-import org.koin.compose.koinInject
 
 
 @Composable
@@ -163,7 +159,6 @@ fun UpdatesScreenSuccess(
 	updates: List<AppUpdate>
 ) = Column {
 	val handler = LocalUriHandler.current
-	val tv = koinInject<Prefs>().androidTvUi.get()
 	val currentFilter by viewModel.filterMode.collectAsStateWithLifecycle()
 	val currentQuery by viewModel.filterQuery.collectAsStateWithLifecycle()
 	val groupByPackage by viewModel.groupByPackage.collectAsStateWithLifecycle()
@@ -177,8 +172,7 @@ fun UpdatesScreenSuccess(
 
 	when {
 		displayedUpdates.isEmpty() -> EmptyGrid(stringResource(R.string.no_updates_found))
-		tv -> TvGrid(viewModel, displayedUpdates, updates, groupByPackage, handler)
-		!tv -> Grid(viewModel, displayedUpdates, updates, groupByPackage, handler)
+		else -> TvGrid(viewModel, displayedUpdates, updates, groupByPackage, handler)
 	}
 }
 
@@ -193,33 +187,13 @@ fun TvGrid(
 	items(updates) { update ->
 		val alts = if (groupByPackage) allUpdates.filter { it.packageName == update.packageName } else listOf(update)
 		TvUpdateItem(
-			update,
-			alts,
-			onInstall = { chosen -> viewModel.install(chosen, handler) },
-			{ viewModel.ignoreVersion(update.id) },
-			{ viewModel.ignoreApp(update.packageName) },
-			{ viewModel.cancelInstall(alts.firstOrNull { it.isInstalling }?.id ?: update.id) }
+			app = update,
+			alternatives = alts,
+			onInstall = { chosen -> viewModel.install(chosen) },
+			onIgnoreVersion = { viewModel.ignoreVersion(update.id) },
+			onIgnoreApp = { viewModel.ignoreApp(update.packageName) },
+			onCancel = { viewModel.cancelInstall(alts.firstOrNull { it.isInstalling }?.id ?: update.id) },
+			onOpenSource = { chosen -> viewModel.openSource(chosen, handler) }
 		)
 	}
 }
-
-@Composable
-fun Grid(
-	viewModel: UpdatesViewModel,
-	updates: List<AppUpdate>,
-	allUpdates: List<AppUpdate>,
-	groupByPackage: Boolean,
-	handler: UriHandler
-) = InstalledGrid {
-	items(updates, key = { it.id }) { update ->
-		val alts = if (groupByPackage) allUpdates.filter { it.packageName == update.packageName } else listOf(update)
-		UpdateItem(
-			update,
-			alts,
-			onInstall = { chosen -> viewModel.install(chosen, handler) },
-			{ viewModel.cancelInstall(alts.firstOrNull { it.isInstalling }?.id ?: update.id) },
-			{ viewModel.ignoreApp(update.packageName) }
-		)
-	}
-}
-

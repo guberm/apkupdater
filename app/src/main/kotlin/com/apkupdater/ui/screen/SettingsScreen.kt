@@ -52,11 +52,9 @@ import com.apkupdater.ui.component.LoadingImageApp
 import com.apkupdater.ui.component.MediumText
 import com.apkupdater.ui.component.MediumTitle
 import com.apkupdater.ui.component.SegmentedButtonSetting
-import com.apkupdater.ui.component.SliderSetting
 import com.apkupdater.ui.component.SourceIcon
 import com.apkupdater.ui.component.SwitchSetting
 import com.apkupdater.ui.theme.statusBarColor
-import com.apkupdater.util.isAndroidTv
 import com.apkupdater.util.getAppName
 import com.apkupdater.viewmodel.SettingsViewModel
 import org.koin.compose.viewmodel.koinViewModel
@@ -161,34 +159,6 @@ fun AboutItem(
 fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 	item {
 		LargeTitle(stringResource(R.string.settings_ui), Modifier.padding(start = 16.dp, top = 16.dp))
-		val tvUi = remember { mutableStateOf(viewModel.getAndroidTvUi()) }
-		SwitchSetting(
-			getValue = { viewModel.getAndroidTvUi() },
-			setValue = {
-				viewModel.setAndroidTvUi(it)
-				tvUi.value = it
-		   	},
-			text = stringResource(R.string.settings_android_tv_ui),
-			icon = R.drawable.ic_androidtv
-		)
-		if (!tvUi.value) {
-			SliderSetting(
-				{ viewModel.getPortraitColumns().toFloat() },
-				{ viewModel.setPortraitColumns(it.toInt()) },
-				stringResource(R.string.settings_portrait_columns),
-				1f..4f,
-				2,
-				R.drawable.ic_portrait
-			)
-			SliderSetting(
-				{ viewModel.getLandscapeColumns().toFloat() },
-				{ viewModel.setLandscapeColumns(it.toInt()) },
-				stringResource(R.string.settings_landscape_columns),
-				1f..8f,
-				6,
-				R.drawable.ic_landscape
-			)
-		}
 		SwitchSetting(
 			{ viewModel.getPlayTextAnimations() },
 			{ viewModel.setPlayTextAnimations(it) },
@@ -323,24 +293,13 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 			text = stringResource(R.string.settings_alarm),
 			icon = R.drawable.ic_alarm
 		)
-		if (LocalContext.current.isAndroidTv()) {
-			DropDownSetting(
-				text = stringResource(R.string.settings_hour),
-				options = (0..23).map { it.toString() },
-				getValue = { viewModel.getAlarmHour() },
-				setValue = { viewModel.setAlarmHour(it) },
-				icon = R.drawable.ic_hour
-			)
-		} else {
-			SliderSetting(
-				getValue = { viewModel.getAlarmHour().toFloat() },
-				setValue = { viewModel.setAlarmHour(it.toInt()) },
-				text = stringResource(R.string.settings_hour),
-				valueRange = 0f..23f,
-				steps = 23,
-				R.drawable.ic_hour
-			)
-		}
+		DropDownSetting(
+			text = stringResource(R.string.settings_hour),
+			options = (0..23).map { it.toString() },
+			getValue = { viewModel.getAlarmHour() },
+			setValue = { viewModel.setAlarmHour(it) },
+			icon = R.drawable.ic_hour
+		)
 		SegmentedButtonSetting(
 			stringResource(R.string.frequency),
 			listOf(

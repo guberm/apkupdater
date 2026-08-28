@@ -22,8 +22,6 @@
     <string name="install_failure">A instalação de "%1$s falhou."</string>
 
     // Settings
-    <string name="settings_portrait_columns">"Colunas em modo retrato"</string>
-    <string name="settings_landscape_columns">"Colunas em modo paisagem"</string>
     <string name="settings_sources">"Fontes"</string>
     <string name="settings_ui">"Interface"</string>
     <string name="settings_alarm">"Alarme"</string>
@@ -32,7 +30,6 @@
     <string name="settings_alarm_daily">"Diário"</string>
     <string name="settings_alarm_3day">"A cada 3 dias"</string>
     <string name="settings_alarm_weekly">"Semanalmente"</string>
-    <string name="settings_android_tv_ui" translatable="false">Interface do Android TV</string>
     <string name="ignore_alpha">"Ignorar alpha"</string>
     <string name="ignore_beta">"Ignorar beta"</string>
     <string name="ignore_preRelease">"Ignorar pré-lançamento"</string>

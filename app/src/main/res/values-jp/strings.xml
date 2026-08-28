@@ -23,8 +23,6 @@
     <string name="root_install_not_supported">このアプリのrootインストールはサポートされていません。</string>
 
     // Settings
-    <string name="settings_portrait_columns">ポートレートモードでの列数</string>
-    <string name="settings_landscape_columns">ランドスケープモードでの列数</string>
     <string name="play_text_animations">テキストのアニメーションを再生する</string>
     <string name="settings_sources">ソース</string>
     <string name="settings_ui">UI</string>
@@ -35,7 +33,6 @@
     <string name="settings_alarm_daily">毎日</string>
     <string name="settings_alarm_3day">3日ごと</string>
     <string name="settings_alarm_weekly">毎週</string>
-    <string name="settings_android_tv_ui" translatable="false">Android TVのUI</string>
     <string name="ignore_alpha">アルファ版を無視する</string>
     <string name="ignore_beta">ベータ版を無視する</string>
     <string name="ignore_preRelease">プレリリースを無視する</string>

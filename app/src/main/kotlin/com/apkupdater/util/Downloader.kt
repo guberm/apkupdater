@@ -10,6 +10,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import java.io.File
+import java.io.FilterInputStream
+import java.io.IOException
 import java.io.InputStream
 import java.util.concurrent.ConcurrentHashMap
 
@@ -32,14 +34,22 @@ class Downloader(
         val resolved = resolveDownloadUrl(url)
         val file = File(dir, randomUUID())
         val c = if (ApkMirrorDownloadResolver.isApkMirrorUrl(resolved.url)) auroraClient else client
-        c.newCall(downloadRequest(resolved.url, resolved.referer)).execute().use {
-            if (it.isSuccessful && !it.isUnexpectedApkMirrorHtml(url)) {
-                it.body.byteStream().use { input ->
-                    file.outputStream().use { output -> input.copyTo(output) }
+        try {
+            c.newCall(downloadRequest(resolved.url, resolved.referer)).execute().use { response ->
+                if (response.isSuccessful && !response.isUnexpectedApkMirrorHtml(url)) {
+                    response.body.byteStream().use { input ->
+                        file.outputStream().use { output -> input.copyTo(output) }
+                    }
+                } else {
+                    throw IOException("Download failed with HTTP ${response.code}: $url")
                 }
             }
+            if (file.length() == 0L) throw IOException("Downloaded file is empty: $url")
+            return file
+        } catch (error: Throwable) {
+            file.delete()
+            throw error
         }
-        return file
     }
 
     /** Downloads [url] to a temp file using the correct client for the URL, returns the file. Retries on transient IO errors. */
@@ -65,21 +75,23 @@ class Downloader(
                     Log.d("Downloader", "downloadFile: response code=${response.code} success=${response.isSuccessful} attempt=${attempt + 1}")
                     if (response.isSuccessful && !response.isUnexpectedApkMirrorHtml(url)) {
                         val total = response.body.contentLength()
-                        val input = response.body.byteStream()
-                        val output = file.outputStream()
-                        if (onProgress == null) {
-                            input.copyTo(output)
-                        } else {
-                            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                            var bytesRead = 0L
-                            var read: Int
-                            while (input.read(buffer).also { read = it } != -1) {
-                                output.write(buffer, 0, read)
-                                bytesRead += read
-                                onProgress(bytesRead, if (total >= 0) total else bytesRead)
+                        response.body.byteStream().use { input ->
+                            file.outputStream().use { output ->
+                                if (onProgress == null) {
+                                    input.copyTo(output)
+                                } else {
+                                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                                    var bytesRead = 0L
+                                    var read: Int
+                                    while (input.read(buffer).also { read = it } != -1) {
+                                        output.write(buffer, 0, read)
+                                        bytesRead += read
+                                        onProgress(bytesRead, if (total >= 0) total else bytesRead)
+                                    }
+                                }
                             }
                         }
-                        output.close()
+                        if (file.length() == 0L) throw IOException("Downloaded file is empty: ${resolved.url}")
                         Log.d("Downloader", "downloadFile: written ${file.length()} bytes -> ${file.absolutePath}")
                         return file
                     } else {
@@ -94,8 +106,7 @@ class Downloader(
             }
         }
         Log.e("Downloader", "downloadFile: all retries exhausted for url=${resolved.url}")
-        lastException?.let { throw it }
-        return File(dir, randomUUID()) // empty file fallback
+        throw lastException ?: IOException("Download failed: ${resolved.url}")
     }
 
     fun downloadStream(url: String, downloadId: Int = -1): InputStream? = runCatching {
@@ -116,12 +127,22 @@ class Downloader(
         val call = c.newCall(downloadRequest(resolved.url, resolved.referer))
         if (downloadId >= 0) activeCalls[downloadId] = call
         val response = call.execute()
-        if (downloadId >= 0) activeCalls.remove(downloadId)
         if (response.isSuccessful && !response.isUnexpectedApkMirrorHtml(url)) {
             Log.d("Downloader", "downloadStream: success code=${response.code} url=${resolved.url}")
-            return response.body.byteStream()
+            val bodyStream = response.body.byteStream()
+            return object : FilterInputStream(bodyStream) {
+                override fun close() {
+                    try {
+                        super.close()
+                    } finally {
+                        response.close()
+                        if (downloadId >= 0) activeCalls.remove(downloadId, call)
+                    }
+                }
+            }
         } else {
             response.close()
+            if (downloadId >= 0) activeCalls.remove(downloadId, call)
             Log.e("Downloader", "downloadStream: FAILED code=${response.code} url=${resolved.url}")
         }
         return null

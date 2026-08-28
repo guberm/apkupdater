@@ -30,12 +30,12 @@ class SearchViewModel(
     private val searchRepository: SearchRepository,
     private val installer: SessionInstaller,
     private val badger: Badger,
-    downloader: Downloader,
+    private val downloader2: Downloader,
     prefs: Prefs,
     private val snackBar: SnackBar,
     private val stringer: Stringer,
     installLog: InstallLog
-) : InstallViewModel(downloader, installer, prefs, snackBar, stringer, installLog) {
+) : InstallViewModel(downloader2, installer, prefs, snackBar, stringer, installLog) {
 
     private val mutex = Mutex()
     private val state = MutableStateFlow<SearchUiState>(SearchUiState.Success(emptyList()))
@@ -70,6 +70,7 @@ class SearchViewModel(
     }
 
     override fun cancelInstall(id: Int) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
+        downloader2.cancelDownload(id)
         state.value = SearchUiState.Success(state.value.mutableUpdates().setIsInstalling(id, false))
         installer.finish()
     }

@@ -34,26 +34,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.apkupdater.R
-import com.apkupdater.prefs.Prefs
-import org.koin.compose.koinInject
 
 @Composable
 fun LoadingGrid() {
-    if (koinInject<Prefs>().androidTvUi.get()) {
-        TvShimmeringGrid()
-    } else {
-        ShimmeringGrid()
-    }
-}
-
-@Composable
-fun ShimmeringGrid() = Box(Modifier.fillMaxSize()) {
-    InstalledGrid(false) {
-        items(16) { index ->
-            LoadingTile(170.dp, index)
-        }
-    }
-    RefreshLoadingBadge(Modifier.align(Alignment.TopCenter).padding(top = 20.dp))
+    TvShimmeringGrid()
 }
 
 @Composable
@@ -155,20 +139,6 @@ fun EmptyGrid(
 }
 
 @Composable
-fun InstalledGrid(
-    scroll: Boolean = true,
-    content: LazyGridScope.() -> Unit
-) = LazyVerticalGrid(
-    columns =  GridCells.Fixed(getNumColumns(LocalConfiguration.current.orientation)),
-    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-    verticalArrangement = Arrangement.spacedBy(8.dp),
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
-    content = content,
-    userScrollEnabled = scroll,
-    modifier = Modifier.fillMaxSize()
-)
-
-@Composable
 fun TvInstalledGrid(scroll: Boolean = true, content: LazyGridScope.() -> Unit) = LazyVerticalGrid(
     columns = GridCells.Fixed(getTvNumColumns()),
     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
@@ -178,15 +148,6 @@ fun TvInstalledGrid(scroll: Boolean = true, content: LazyGridScope.() -> Unit) =
     userScrollEnabled = scroll,
     modifier = Modifier.fillMaxSize()
 )
-
-@Composable
-fun getNumColumns(orientation: Int): Int {
-    val prefs = koinInject<Prefs>()
-    return if(orientation == Configuration.ORIENTATION_PORTRAIT)
-        prefs.portraitColumns.get()
-    else
-        prefs.landscapeColumns.get()
-}
 
 @Composable
 fun getTvNumColumns(): Int {

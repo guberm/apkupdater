@@ -32,5 +32,6 @@ fun AppUpdateResponse.toAppUpdate(
     ApkPureSource,
     if (app == null) icon.thumbnail.url.toUri() else Uri.EMPTY,
     if (asset.url.contains("/XAPK")) Link.Xapk(asset.url.replace("http://", "https://")) else Link.Url(asset.url.replace("http://", "https://")),
-    if (app == null) description_short else whatsnew
+    if (app == null) description_short else whatsnew,
+    sourceUrl = "https://apkpure.com/search?q=${Uri.encode(package_name)}"
 )

@@ -16,7 +16,6 @@ import com.apkupdater.data.ui.getVersion
 import com.apkupdater.data.ui.toApksData
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.service.AptoideService
-import com.apkupdater.util.isAndroidTv
 import com.apkupdater.util.randomUUID
 import io.github.g00fy2.versioncompare.Version
 import kotlinx.coroutines.flow.catch
@@ -71,7 +70,7 @@ class AptoideRepository(
 
     private fun computeFilters(context: Context): String {
         val filters = "maxSdk=${getSdkVer()}&maxScreen=${getScreenSize()}&maxGles=" +
-                "${getGlEs(context)}&myCPU=${getAbis()}&leanback=${hasLeanback(context)}" +
+                "${getGlEs(context)}&myCPU=${getAbis()}&leanback=1" +
                 "&myDensity=${getDensityDpi()}"
 
         return Base64.encodeToString(filters.toByteArray(), 0)
@@ -95,8 +94,6 @@ class AptoideRepository(
     }
 
     private fun getAbis() = Build.SUPPORTED_ABIS.joinToString(separator = ",")
-
-    private fun hasLeanback(context: Context): String = if (context.isAndroidTv()) "1" else "0"
 
     private fun getDensityDpi(): Int {
         val dpi = Resources.getSystem().displayMetrics.densityDpi

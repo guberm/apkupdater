@@ -36,6 +36,8 @@
     <string name="include_disabled_apps">Include Disabled Apps</string>
     <string name="install_cd">Install App</string>
     <string name="install_all">Install All</string>
+    <string name="open_source">Source</string>
+    <string name="open_source_failure">No browser is available to open this source.</string>
     <string name="app_cd">App Icon</string>
     <string name="install_success">%1$s installed.</string>
     <string name="install_failure">%1$s failed to install.</string>
@@ -43,8 +45,6 @@
 
     // Settings
     <string name="settings_experimental_installer">Use Experimental New Installer</string>
-    <string name="settings_portrait_columns">Portrait Columns</string>
-    <string name="settings_landscape_columns">Landscape Columns</string>
     <string name="play_text_animations">Play Text Animations</string>
     <string name="settings_sources">Sources</string>
     <string name="settings_ui">UI</string>
@@ -55,7 +55,6 @@
     <string name="settings_alarm_daily">Daily</string>
     <string name="settings_alarm_3day">3-Day</string>
     <string name="settings_alarm_weekly">Weekly</string>
-    <string name="settings_android_tv_ui" translatable="false">Android TV UI</string>
     <string name="ignore_alpha">Ignore Alpha</string>
     <string name="ignore_beta">Ignore Beta</string>
     <string name="ignore_preRelease">Ignore Pre-release</string>

@@ -3,7 +3,6 @@ package com.apkupdater.util
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
-import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.content.res.Resources
 import android.graphics.Typeface
@@ -119,13 +118,7 @@ fun Intent.getIntentExtra(): Intent? = when {
 	else -> @Suppress("DEPRECATION") getParcelableExtra(Intent.EXTRA_INTENT)
 }
 
-fun Intent.getAppId() = runCatching {
-	action?.split(".")?.get(1)?.toInt()
-}.getOrNull()
-
-fun PackageManager.isAndroidTv() = hasSystemFeature(PackageManager.FEATURE_LEANBACK)
-
-fun Context.isAndroidTv() = packageManager.isAndroidTv()
+fun Intent.getAppId() = action?.substringAfterLast('.')?.toIntOrNull()
 
 fun randomUUID() = UUID.randomUUID().toString()
 

@@ -37,6 +37,7 @@ import com.apkupdater.data.ui.ApkMirrorSource
 import com.apkupdater.data.ui.ApkPureSource
 import com.apkupdater.data.ui.AppInstalled
 import com.apkupdater.data.ui.AppUpdate
+import com.apkupdater.data.ui.Link
 import com.apkupdater.data.ui.Source
 import com.apkupdater.util.getAppName
 import com.apkupdater.util.to2f
@@ -174,18 +175,32 @@ fun TvIgnoreAppButton(
 }
 
 @Composable
+fun TvOpenSourceButton(
+    app: AppUpdate,
+    onOpenSource: (AppUpdate) -> Unit
+) = ElevatedButton(
+    modifier = Modifier.padding(top = 0.dp, bottom = 8.dp, start = 0.dp, end = 4.dp),
+    enabled = app.sourceUrl.isNotBlank(),
+    onClick = { onOpenSource(app) }
+) {
+    Text(stringResource(R.string.open_source))
+}
+
+@Composable
 fun TvUpdateItem(
     app: AppUpdate,
     alternatives: List<AppUpdate> = listOf(app),
     onInstall: (AppUpdate) -> Unit = {},
     onIgnoreVersion: (Int) -> Unit = {},
     onIgnoreApp: (String) -> Unit = {},
-    onCancel: () -> Unit = {}
+    onCancel: () -> Unit = {},
+    onOpenSource: (AppUpdate) -> Unit = {}
 ) = Card {
     Column {
         TvCommonItem(app.packageName, app.name, app.version, app.oldVersion, app.versionCode, app.oldVersionCode)
         WhatsNew(app.whatsNew, app.source)
         Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.End) {
+            TvOpenSourceButton(app, onOpenSource)
             TvIgnoreAppButton(app, onIgnoreApp)
             TvIgnoreVersionButton(app, onIgnoreVersion)
             TvInstallButton(app, alternatives, onInstall, onCancel)
@@ -194,14 +209,22 @@ fun TvUpdateItem(
 }
 
 @Composable
-fun TvSearchItem(app: AppUpdate, onInstall: (String) -> Unit = {}) = Card {
+fun TvSearchItem(
+    app: AppUpdate,
+    onInstall: (String) -> Unit = {},
+    onOpenSource: (AppUpdate) -> Unit = {},
+    onCancel: () -> Unit = {}
+) = Card {
     Column {
         TvCommonItem(app.packageName, app.name, app.version, app.oldVersion, app.versionCode, app.oldVersionCode, app.iconUri, true)
         WhatsNew(app.whatsNew, app.source)
         Box {
             TvSourceIcon(app)
             Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.End) {
-                TvInstallButton(app, listOf(app), { onInstall(it.packageName) })
+                TvOpenSourceButton(app, onOpenSource)
+                if (app.link != Link.Empty) {
+                    TvInstallButton(app, listOf(app), { onInstall(it.packageName) }, onCancel)
+                }
             }
         }
     }

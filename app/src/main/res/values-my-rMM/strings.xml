@@ -21,8 +21,6 @@
     <string name="install_failure">%1$s ထည့်သွင်းမှုမအောင်မြင်ပါ။</string>
 
     // Settings
-    <string name="settings_portrait_columns">အလျားလိုက်အကန့်</string>
-    <string name="settings_landscape_columns">ဒေါင်လိုက်အကန့်</string>
     <string name="settings_sources">အရင်းမြစ်များ</string>
     <string name="settings_ui">ပြသပုံ</string>
     <string name="settings_alarm">နှိုးစက်အသိပေးချက်</string>
@@ -32,7 +30,6 @@
     <string name="settings_alarm_daily">နေ့စဥ်</string>
     <string name="settings_alarm_3day">သုံးရက်တိုင်း</string>
     <string name="settings_alarm_weekly">အပတ်စဥ်</string>
-    <string name="settings_android_tv_ui" translatable="false">Android TV UI</string>
     <string name="ignore_alpha">အယ်ဖာ(အစမ်း)များမပါဝင်</string>
     <string name="ignore_beta">ဘယ်တာ(အကြို)များမပါဝင်</string>
     <string name="ignore_preRelease">ကြိုတင်စမ်းသပ်Appများမပါဝင်</string>

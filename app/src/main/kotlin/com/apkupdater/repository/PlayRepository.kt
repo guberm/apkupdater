@@ -139,5 +139,6 @@ fun App.toAppUpdate(
     PlaySource,
     iconArtwork.url.toUri(),
     Link.Play { getInstallFiles(this) },
-    whatsNew = changes
+    whatsNew = changes,
+    sourceUrl = "https://play.google.com/store/apps/details?id=$packageName"
 )

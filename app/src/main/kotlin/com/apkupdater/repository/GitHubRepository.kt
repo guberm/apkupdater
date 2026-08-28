@@ -72,8 +72,14 @@ class GitHubRepository(
     }
 
     private fun selfCheck() = flow {
-        val releases = service.getReleases().filter { filterPreRelease(it) }
-        val versions = getVersions(releases[0].name)
+        val release = service.getReleases()
+            .filter { filterPreRelease(it) }
+            .firstOrNull { findApkAsset(it.assets).isNotEmpty() }
+        if (release == null) {
+            emit(emptyList())
+            return@flow
+        }
+        val versions = getVersions(release.name)
 
         if (versions.second > BuildConfig.VERSION_CODE.toLong()) {
             emit(listOf(AppUpdate(
@@ -84,8 +90,9 @@ class GitHubRepository(
                 versionCode = versions.second,
                 oldVersionCode = BuildConfig.VERSION_CODE.toLong(),
                 source = GitHubSource,
-                link = Link.Url(releases[0].assets[0].browser_download_url),
-                whatsNew = releases[0].body
+                link = Link.Url(findApkAsset(release.assets)),
+                whatsNew = release.body,
+                sourceUrl = release.html_url
             )))
         } else {
             // We need to emit empty so it can be combined later
@@ -112,19 +119,26 @@ class GitHubRepository(
             r.filter { filterPreRelease(it) }.filter { findApkAsset(it.assets).isNotEmpty() }
         }
 
-        if (releases.isNotEmpty() && Version(filterVersionTag(releases[0].tag_name)) > Version(currentVersion)) {
+        val release = releases.firstOrNull()
+        if (release != null && Version(filterVersionTag(release.tag_name)) > Version(currentVersion)) {
             val app = apps?.getApp(packageName)
+            val asset = findApkAssetArch(release.assets, extra)
+            if (asset.browser_download_url.isBlank()) {
+                emit(emptyList())
+                return@flow
+            }
             emit(listOf(AppUpdate(
                 name = repo,
                 packageName = packageName,
-                version = releases[0].tag_name,
+                version = release.tag_name,
                 oldVersion = app?.version ?: "?",
                 versionCode = 0L,
                 oldVersionCode = app?.versionCode ?: 0L,
                 source = GitHubSource,
-                link = findApkAssetArch(releases[0].assets, extra).let { Link.Url(it.browser_download_url, it.size) },
-                whatsNew = releases[0].body,
-                iconUri = if (apps == null) releases[0].author.avatar_url.toUri() else Uri.EMPTY
+                link = Link.Url(asset.browser_download_url, asset.size),
+                whatsNew = release.body,
+                iconUri = if (apps == null) release.author.avatar_url.toUri() else Uri.EMPTY,
+                sourceUrl = release.html_url
             )))
         } else {
             emit(emptyList())

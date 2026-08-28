@@ -23,8 +23,6 @@
     <string name="root_install_not_supported">Az app root telepítése nem támogatott.</string>
 
     // Settings
-    <string name="settings_portrait_columns">Álló mód oszlopok</string>
-    <string name="settings_landscape_columns">Fekvő mód oszlopok</string>
     <string name="play_text_animations">Szöveg animációk lejátszása</string>
     <string name="settings_sources">Források</string>
     <string name="settings_ui">Felület</string>
@@ -35,7 +33,6 @@
     <string name="settings_alarm_daily">Naponta</string>
     <string name="settings_alarm_3day">3 naponta</string>
     <string name="settings_alarm_weekly">Hetente</string>
-    <string name="settings_android_tv_ui" translatable="false">Android TV felület</string>
     <string name="ignore_alpha">Alpha kizárása</string>
     <string name="ignore_beta">Beta kizárása</string>
     <string name="ignore_preRelease">Pre-release kizárása</string>

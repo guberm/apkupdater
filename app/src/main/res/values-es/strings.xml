@@ -22,8 +22,6 @@
     <string name="install_failure">%1$s fallo en la instalación.</string>
 
     // Settings
-    <string name="settings_portrait_columns">Columnas en modo Retrato</string>
-    <string name="settings_landscape_columns">Columnas en modo Apaisado</string>
     <string name="settings_sources">Fuentes</string>
     <string name="settings_ui">Interfaz de Usuario</string>
     <string name="settings_alarm">Alarma</string>
@@ -32,7 +30,6 @@
     <string name="settings_alarm_daily">Diaria</string>
     <string name="settings_alarm_3day">A cada 3 días</string>
     <string name="settings_alarm_weekly">Semanal</string>
-    <string name="settings_android_tv_ui" translatable="false">Interfaz de Android TV</string>
     <string name="ignore_alpha">Ignorar Alpha</string>
     <string name="ignore_beta">Ignorar Beta</string>
     <string name="ignore_preRelease">Ignorar Prelanzamiento</string>

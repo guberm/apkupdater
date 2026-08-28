@@ -19,8 +19,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -49,14 +47,10 @@ import com.apkupdater.viewmodel.MainViewModel
 import com.apkupdater.viewmodel.SearchViewModel
 import com.apkupdater.viewmodel.SettingsViewModel
 import com.apkupdater.viewmodel.UpdatesViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.collect
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
-import kotlin.coroutines.CoroutineContext
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,9 +65,6 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
 	// Navigation
 	val navController = rememberNavController()
 
-	// Pull to refresh
-	val isRefreshing = mainViewModel.isRefreshing.collectAsStateWithLifecycle()
-	val pullToRefreshState = rememberPullToRefreshState()
 	LaunchedEffect(Unit) {
 		mainViewModel.refresh(appsViewModel, updatesViewModel)
 	}
@@ -103,13 +94,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
 			snackbarHost = { SnackbarHost(snackBarHostState) },
 			bottomBar = { BottomBar(mainViewModel, navController) }
 		) { padding ->
-			PullToRefreshBox(
-				isRefreshing = isRefreshing.value,
-				onRefresh = { mainViewModel.refresh(appsViewModel, updatesViewModel) },
-				state = pullToRefreshState
-			) {
-				NavHost(navController, padding, mainViewModel, appsViewModel, updatesViewModel, searchViewModel, settingsViewModel)
-			}
+			NavHost(navController, padding, mainViewModel, appsViewModel, updatesViewModel, searchViewModel, settingsViewModel)
 		}
 	}
 }
@@ -117,7 +102,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
 @Composable
 fun handleSnackBar(): SnackbarHostState {
 	val snackBarHostState = remember { SnackbarHostState() }
-	koinInject<SnackBar>().flow().CollectAsEffect(Dispatchers.IO) {
+	koinInject<SnackBar>().flow().CollectAsEffect {
 		snackBarHostState.showSnackbar(it)
 	}
 	return snackBarHostState
@@ -125,10 +110,9 @@ fun handleSnackBar(): SnackbarHostState {
 
 @Composable
 fun <T> Flow<T>.CollectAsEffect(
-	context: CoroutineContext = Dispatchers.IO,
 	block: suspend (T) -> Unit
 ) = LaunchedEffect(Unit) {
-	onEach(block).flowOn(context).launchIn(this)
+	collect { block(it) }
 }
 
 @Composable
@@ -156,7 +140,10 @@ fun CheckNotificationIntent(
 	launcher: ManagedActivityResultLauncher<Intent, ActivityResult>
 ) {
 	val activity = LocalActivity.current as? ComponentActivity ?: return
-	mainViewModel.processIntent(activity.intent, launcher, updatesViewModel, navController)
+	val intent = activity.intent
+	LaunchedEffect(intent) {
+		mainViewModel.processIntent(intent, launcher, updatesViewModel, navController)
+	}
 }
 
 @Composable

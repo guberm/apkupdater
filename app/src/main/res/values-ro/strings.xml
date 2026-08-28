@@ -19,8 +19,6 @@
     <string name="app_cd">Iconița Aplicației</string>
 
     // Settings
-    <string name="settings_portrait_columns">Coloane Portret</string>
-    <string name="settings_landscape_columns">Coloane Peisaj</string>
     <string name="settings_sources">Surse</string>
     <string name="settings_ui">UI</string>
     <string name="settings_alarm">Alarmă</string>
@@ -29,7 +27,6 @@
     <string name="settings_alarm_daily">Zilnic</string>
     <string name="settings_alarm_3day">În fiecare 3 zile</string>
     <string name="settings_alarm_weekly">Săptămânal</string>
-    <string name="settings_android_tv_ui" translatable="false">Android TV UI</string>
     <string name="ignore_alpha">Ignoră Aplicațiile Alpha</string>
     <string name="ignore_beta">Ignoră Aplicațiile Beta</string>
     <string name="root_install">Instalează Automat Folosind ROOT</string>

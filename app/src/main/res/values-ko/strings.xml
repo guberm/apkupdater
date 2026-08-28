@@ -22,8 +22,6 @@
     <string name="install_failure">%1$s 설치 실패됨.</string>
 
     // Settings
-    <string name="settings_portrait_columns">세로 열</string>
-    <string name="settings_landscape_columns">가로 열</string>
     <string name="play_text_animations">텍스트 애니메이션 재생</string>
     <string name="settings_sources">출처</string>
     <string name="settings_ui">UI</string>
@@ -34,7 +32,6 @@
     <string name="settings_alarm_daily">일일</string>
     <string name="settings_alarm_3day">3일</string>
     <string name="settings_alarm_weekly">주간</string>
-    <string name="settings_android_tv_ui" translatable="false">안드로이드TV UI</string>
     <string name="ignore_alpha">알파 무시</string>
     <string name="ignore_beta">베타 무시</string>
     <string name="ignore_preRelease">시험판 무시</string>

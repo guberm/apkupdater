@@ -17,8 +17,6 @@ import com.apkupdater.util.SessionInstaller
 import com.apkupdater.util.UpdatesNotification
 import com.apkupdater.util.getAppId
 import com.apkupdater.util.getIntentExtra
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 
@@ -29,17 +27,12 @@ class MainViewModel(
 
 	val screens = listOf(Screen.Apps, Screen.Search, Screen.Updates, Screen.Settings)
 
-	val isRefreshing = MutableStateFlow(false)
-
 	fun refresh(
 		appsViewModel: AppsViewModel,
 		updatesViewModel: UpdatesViewModel
 	) = viewModelScope.launch {
-		isRefreshing.value = true
 		appsViewModel.refresh(false)
-		updatesViewModel.refresh().invokeOnCompletion {
-			isRefreshing.value = false
-		}
+		updatesViewModel.refresh()
 	}
 
 	fun processIntent(
@@ -49,8 +42,15 @@ class MainViewModel(
 		navController: NavController
 	) {
 		when {
-			intent.action == UpdatesNotification.UpdateAction -> processUpdateIntent(navController, updatesViewModel)
-			intent.isInstallCallback() -> processInstallIntent(intent, launcher)
+			intent.action == UpdatesNotification.UpdateAction -> {
+				intent.action = null
+				processUpdateIntent(navController, updatesViewModel)
+			}
+			intent.isInstallCallback() -> {
+				val callbackIntent = Intent(intent)
+				intent.action = null
+				processInstallIntent(callbackIntent, launcher)
+			}
 			else -> {}
 		}
 	}
@@ -67,7 +67,7 @@ class MainViewModel(
 	private fun processInstallIntent(
 		intent: Intent,
 		launcher: ManagedActivityResultLauncher<Intent, ActivityResult>
-	) = viewModelScope.launch(Dispatchers.IO) {
+	) = viewModelScope.launch {
 		val appId = intent.getAppId()
 		if (appId == null || !installLog.isExpectedInstall(appId)) {
 			Log.w("MainViewModel", "Ignoring unexpected install callback: ${intent.action}")
@@ -77,10 +77,22 @@ class MainViewModel(
 		when (intent.extras?.getInt(PackageInstaller.EXTRA_STATUS)) {
 			PackageInstaller.STATUS_PENDING_USER_ACTION -> {
 				installLog.currentInstallId = appId
-				// Launch intent to confirm install
-				intent.getIntentExtra()?.let {
-					it.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-					launcher.launch(it)
+				val confirmationIntent = intent.getIntentExtra()
+				if (confirmationIntent == null) {
+					installLog.finishExpectedInstall(appId)
+					installLog.emitStatus(AppInstallStatus(false, appId))
+					Log.e("MainViewModel", "Missing confirmation intent for install $appId")
+					return@launch
+				}
+				runCatching {
+					confirmationIntent.apply {
+						addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+						launcher.launch(this)
+					}
+				}.onFailure {
+					installLog.finishExpectedInstall(appId)
+					installLog.emitStatus(AppInstallStatus(false, appId))
+					Log.e("MainViewModel", "Failed to launch install confirmation for $appId", it)
 				}
 			}
 			PackageInstaller.STATUS_SUCCESS -> {
