@@ -51,6 +51,7 @@ class UpdatesViewModel(
 
 	private val mutex = Mutex()
 	private val state = MutableStateFlow<UpdatesUiState>(UpdatesUiState.Loading)
+	val isRefreshing = MutableStateFlow(false)
 	private val downloadJobs = ConcurrentHashMap<Int, Job>()
 	private val downloadedUris = ConcurrentHashMap<Int, MutableList<Uri>>()
 
@@ -82,16 +83,21 @@ class UpdatesViewModel(
 	fun state(): StateFlow<UpdatesUiState> = state
 
 	fun refresh(load: Boolean = true) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
-		if (load) state.value = UpdatesUiState.Loading
-		badger.changeUpdatesBadge("")
-		updatesRepository.updates().collect {
-			setSuccess(it)
+		isRefreshing.value = true
+		try {
+			if (load) state.value = UpdatesUiState.Loading
+			badger.changeUpdatesBadge("")
+			updatesRepository.updates().collect {
+				setSuccess(it)
+			}
+		} finally {
+			isRefreshing.value = false
 		}
 	}
 
 	fun installAll() = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
 		if(installer.checkPermission()) {
-			state.value.updates().forEach { update ->
+			prepareUpdates(state.value.updates(), groupByPackage = true).forEach { update ->
 				if (state.value.updates().any { it.id == update.id && it.isInstalling }) return@forEach
 				state.value = UpdatesUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
 				val job = applicationScope.launch {
@@ -102,18 +108,22 @@ class UpdatesViewModel(
 		}
 	}
 
-	fun ignoreVersion(id: Int) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
-		val ignored = prefs.ignoredVersions.get().toMutableList()
-		if (ignored.contains(id)) ignored.remove(id) else ignored.add(id)
-		prefs.ignoredVersions.put(ignored)
-		setSuccess(state.value.mutableUpdates())
+	fun ignoreVersion(update: AppUpdate) = ignoreUpdate(ignoreVersionKey(update))
+
+	fun ignoreVersionFromSource(update: AppUpdate) = ignoreUpdate(ignoreVersionSourceKey(update))
+
+	fun ignoreAppFromSource(update: AppUpdate) = ignoreUpdate(ignoreAppSourceKey(update))
+
+	fun ignoreApp(update: AppUpdate) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
+		val ignored = prefs.ignoredApps.get().toMutableList()
+		if (!ignored.contains(update.packageName)) ignored.add(update.packageName)
+		prefs.ignoredApps.put(ignored)
+		setSuccess(state.value.mutableUpdates().filter { it.packageName != update.packageName }.toMutableList())
 	}
 
-	fun ignoreApp(packageName: String) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
-		val ignored = prefs.ignoredApps.get().toMutableList()
-		if (!ignored.contains(packageName)) ignored.add(packageName)
-		prefs.ignoredApps.put(ignored)
-		setSuccess(state.value.mutableUpdates().filter { it.packageName != packageName }.toMutableList())
+	private fun ignoreUpdate(key: String) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
+		prefs.ignoredUpdates.put((prefs.ignoredUpdates.get() + key).distinct())
+		setSuccess(state.value.mutableUpdates())
 	}
 
 	public override fun cancelInstall(id: Int) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
@@ -211,12 +221,14 @@ class UpdatesViewModel(
 	}
 
 	private fun setSuccess(updates: List<AppUpdate>) = updates
+		.let { prepareUpdates(it) }
 		.filterIgnoredVersions(prefs.ignoredVersions.get())
+		.filter { shouldKeepUpdateForIgnoredUpdates(it, prefs.ignoredUpdates.get().toSet()) }
 		.filterSameVersion()
 		.filterIgnoredReleaseLabels()
 		.let {
 			state.value = UpdatesUiState.Success(it)
-			badger.changeUpdatesBadge(it.size.toString())
+			badger.changeUpdatesBadge(it.distinctBy(AppUpdate::packageName).size.toString())
 		}
 
 	private fun cleanupDownload(id: Int) {
@@ -231,6 +243,19 @@ class UpdatesViewModel(
 
 }
 
+internal fun prepareUpdates(
+	updates: List<AppUpdate>,
+	groupByPackage: Boolean = false
+): List<AppUpdate> {
+	val valid = updates.filter { it.packageName.isNotBlank() }
+	if (!groupByPackage) return valid
+
+	return valid
+		.groupBy { it.packageName }
+		.values
+		.map { alternatives -> alternatives.maxBy { it.versionCode } }
+}
+
 internal fun shouldKeepUpdateForIgnoredReleaseLabels(
 	version: String,
 	ignoreAlpha: Boolean,
@@ -240,3 +265,17 @@ internal fun shouldKeepUpdateForIgnoredReleaseLabels(
 	ignoreBeta && version.contains("beta", ignoreCase = true) -> false
 	else -> true
 }
+
+internal fun ignoreAppSourceKey(update: AppUpdate) =
+	"app-source|${update.packageName}|${update.source.name}"
+
+internal fun ignoreVersionKey(update: AppUpdate) =
+	"version|${update.packageName}|${update.versionCode}|${update.version}"
+
+internal fun ignoreVersionSourceKey(update: AppUpdate) =
+	"version-source|${update.packageName}|${update.versionCode}|${update.version}|${update.source.name}"
+
+internal fun shouldKeepUpdateForIgnoredUpdates(update: AppUpdate, ignored: Set<String>) =
+	ignoreAppSourceKey(update) !in ignored &&
+		ignoreVersionKey(update) !in ignored &&
+		ignoreVersionSourceKey(update) !in ignored

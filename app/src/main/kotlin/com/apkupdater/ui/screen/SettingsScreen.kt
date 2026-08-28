@@ -371,6 +371,13 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 			dirSubtitle
 		)
 		ButtonSetting(
+			stringResource(R.string.settings_clear_download_cache),
+			{ viewModel.clearDownloadCache() },
+			R.drawable.ic_download,
+			R.drawable.ic_refresh,
+			stringResource(R.string.settings_clear_download_cache_description)
+		)
+		ButtonSetting(
 			stringResource(R.string.settings_ignored),
 			{ viewModel.setIgnored() },
 			R.drawable.ic_block,

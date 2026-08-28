@@ -11,10 +11,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,7 +37,6 @@ import com.apkupdater.R
 import com.apkupdater.data.ui.AppInstalled
 import com.apkupdater.data.ui.AppUpdate
 import com.apkupdater.data.ui.Link
-import com.apkupdater.data.ui.Source
 import com.apkupdater.util.getAppName
 import com.apkupdater.util.to2f
 import com.apkupdater.util.toAnnotatedString
@@ -55,26 +52,21 @@ fun TvCommonItem(
     oldVersionCode: Long?,
     uri: Uri? = null,
     single: Boolean = false
-) = Row {
+) = Row(Modifier.fillMaxWidth()) {
     if (uri == null) {
-        LoadingImageApp(packageName, Modifier.height(100.dp).align(Alignment.CenterVertically).padding(top = 8.dp))
+        LoadingImageApp(packageName, Modifier.size(88.dp).align(Alignment.CenterVertically))
     } else {
-        LoadingImage(uri, Modifier.height(100.dp).align(Alignment.CenterVertically).padding(top = 8.dp))
+        LoadingImage(uri, Modifier.size(88.dp).align(Alignment.CenterVertically))
     }
-    Column(Modifier.align(Alignment.CenterVertically).padding(start = 8.dp, end = 8.dp, top = 8.dp)) {
-        LargeTitle(name.ifEmpty { LocalContext.current.getAppName(packageName) }.ifEmpty { packageName })
+    Column(Modifier.weight(1f).align(Alignment.CenterVertically).padding(start = 8.dp, end = 8.dp, top = 8.dp)) {
+        LargeTitle(name.ifEmpty { LocalContext.current.getAppName(packageName) }.ifEmpty { packageName }, maxLines = 2)
         MediumText(packageName)
+        val code = if (versionCode == 0L) "?" else versionCode.toString()
         if (oldVersion != null && !single) {
-            ScrollableText {
-                MediumText("$oldVersion -> $version")
-            }
+            MediumText(stringResource(R.string.old_version_format, oldVersion, oldVersionCode?.toString() ?: "?"))
+            MediumText(stringResource(R.string.new_version_format, version, code))
         } else {
             MediumText(version)
-        }
-        val code = if (versionCode == 0L) "?" else versionCode.toString()
-        if (oldVersionCode != null && !single) {
-            MediumText("$oldVersionCode -> $code")
-        } else {
             MediumText(code)
         }
     }
@@ -91,7 +83,7 @@ fun TvInstallButton(
     val installing = alternatives.firstOrNull { it.isInstalling }
     ElevatedButton(
         modifier = Modifier
-            .padding(top = 0.dp, bottom = 8.dp, start = 8.dp, end = 8.dp)
+            .padding(bottom = 8.dp)
             .widthIn(min = 64.dp),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         onClick = {
@@ -158,36 +150,94 @@ fun TvInstalledItem(app: AppInstalled, onIgnore: (String) -> Unit = {}) = Card(
 @Composable
 fun TvIgnoreVersionButton(
     app: AppUpdate,
-    onIgnoreVersion: (Int) -> Unit,
-) = ElevatedButton(
-    modifier = Modifier.padding(top = 0.dp, bottom = 8.dp, start = 0.dp, end = 0.dp),
-    onClick = { onIgnoreVersion(app.id) }
-) {
-    Text(stringResource(R.string.ignore_version))
+    alternatives: List<AppUpdate>,
+    onIgnoreVersion: (AppUpdate) -> Unit,
+    onIgnoreVersionFromSource: (AppUpdate) -> Unit,
+) = Box {
+    var expanded by remember { mutableStateOf(false) }
+    ElevatedButton(
+        modifier = Modifier.padding(bottom = 8.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        onClick = { expanded = true }
+    ) {
+        Text(stringResource(R.string.ignore_version))
+    }
+    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.ignore_version_all_sources)) },
+            onClick = { expanded = false; onIgnoreVersion(app) }
+        )
+        alternatives.latestPerSource().forEach { update ->
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.ignore_version_source, update.version, update.source.name)) },
+                leadingIcon = { SourceIcon(update.source, Modifier.size(20.dp)) },
+                onClick = { expanded = false; onIgnoreVersionFromSource(update) }
+            )
+        }
+    }
 }
 
 @Composable
 fun TvIgnoreAppButton(
     app: AppUpdate,
-    onIgnoreApp: (String) -> Unit,
-) = ElevatedButton(
-    modifier = Modifier.padding(top = 0.dp, bottom = 8.dp, start = 0.dp, end = 4.dp),
-    onClick = { onIgnoreApp(app.packageName) }
-) {
-    Text(stringResource(R.string.ignore_app))
+    alternatives: List<AppUpdate>,
+    onIgnoreApp: (AppUpdate) -> Unit,
+    onIgnoreAppFromSource: (AppUpdate) -> Unit,
+) = Box {
+    var expanded by remember { mutableStateOf(false) }
+    ElevatedButton(
+        modifier = Modifier.padding(bottom = 8.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        onClick = { expanded = true }
+    ) {
+        Text(stringResource(R.string.ignore_app))
+    }
+    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.ignore_app_cd)) },
+            onClick = { expanded = false; onIgnoreApp(app) }
+        )
+        alternatives.latestPerSource().forEach { update ->
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.ignore_app_source, update.source.name)) },
+                leadingIcon = { SourceIcon(update.source, Modifier.size(20.dp)) },
+                onClick = { expanded = false; onIgnoreAppFromSource(update) }
+            )
+        }
+    }
 }
 
 @Composable
 fun TvOpenSourceButton(
     app: AppUpdate,
+    alternatives: List<AppUpdate> = listOf(app),
     onOpenSource: (AppUpdate) -> Unit
-) = ElevatedButton(
-    modifier = Modifier.padding(top = 0.dp, bottom = 8.dp, start = 0.dp, end = 4.dp),
-    enabled = app.sourceUrl.isNotBlank(),
-    onClick = { onOpenSource(app) }
-) {
-    Text(stringResource(R.string.open_source))
+) = Box {
+    var expanded by remember { mutableStateOf(false) }
+    val sources = alternatives.latestPerSource().filter { it.sourceUrl.isNotBlank() }
+    ElevatedButton(
+        modifier = Modifier.padding(bottom = 8.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        enabled = sources.isNotEmpty(),
+        onClick = {
+            if (sources.size == 1) onOpenSource(sources.first()) else expanded = true
+        }
+    ) {
+        Text(stringResource(R.string.open_source))
+    }
+    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        sources.forEach { update ->
+            DropdownMenuItem(
+                text = { Text("${update.source.name} · ${update.version}") },
+                leadingIcon = { SourceIcon(update.source, Modifier.size(20.dp)) },
+                onClick = { expanded = false; onOpenSource(update) }
+            )
+        }
+    }
 }
+
+private fun List<AppUpdate>.latestPerSource() =
+    groupBy { it.source.name }.values.map { it.maxBy(AppUpdate::versionCode) }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -195,21 +245,23 @@ fun TvUpdateItem(
     app: AppUpdate,
     alternatives: List<AppUpdate> = listOf(app),
     onInstall: (AppUpdate) -> Unit = {},
-    onIgnoreVersion: (Int) -> Unit = {},
-    onIgnoreApp: (String) -> Unit = {},
+    onIgnoreVersion: (AppUpdate) -> Unit = {},
+    onIgnoreVersionFromSource: (AppUpdate) -> Unit = {},
+    onIgnoreApp: (AppUpdate) -> Unit = {},
+    onIgnoreAppFromSource: (AppUpdate) -> Unit = {},
     onCancel: () -> Unit = {},
     onOpenSource: (AppUpdate) -> Unit = {}
 ) = Card {
     Column {
         TvCommonItem(app.packageName, app.name, app.version, app.oldVersion, app.versionCode, app.oldVersionCode)
-        WhatsNew(app.whatsNew, app.source)
+        WhatsNew(app.whatsNew)
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End)
         ) {
-            TvOpenSourceButton(app, onOpenSource)
-            TvIgnoreAppButton(app, onIgnoreApp)
-            TvIgnoreVersionButton(app, onIgnoreVersion)
+            TvOpenSourceButton(app, alternatives, onOpenSource)
+            TvIgnoreAppButton(app, alternatives, onIgnoreApp, onIgnoreAppFromSource)
+            TvIgnoreVersionButton(app, alternatives, onIgnoreVersion, onIgnoreVersionFromSource)
             TvInstallButton(app, alternatives, onInstall, onCancel)
         }
     }
@@ -224,11 +276,11 @@ fun TvSearchItem(
 ) = Card {
     Column {
         TvCommonItem(app.packageName, app.name, app.version, app.oldVersion, app.versionCode, app.oldVersionCode, app.iconUri, true)
-        WhatsNew(app.whatsNew, app.source)
+        WhatsNew(app.whatsNew)
         Box {
             TvSourceIcon(app)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TvOpenSourceButton(app, onOpenSource)
+                TvOpenSourceButton(app, onOpenSource = onOpenSource)
                 if (app.link != Link.Empty) {
                     TvInstallButton(app, listOf(app), { onInstall(it.packageName) }, onCancel)
                 }
@@ -238,10 +290,13 @@ fun TvSearchItem(
 }
 
 @Composable
-fun WhatsNew(whatsNew: String, source: Source) {
+fun WhatsNew(whatsNew: String) {
     if (whatsNew.isNotEmpty()) {
         val text = HtmlCompat
-            .fromHtml(whatsNew.trim(), HtmlCompat.FROM_HTML_MODE_COMPACT)
+            .fromHtml(
+                whatsNew.trim().replace("&lt;br&gt;", "<br>", ignoreCase = true),
+                HtmlCompat.FROM_HTML_MODE_COMPACT
+            )
             .toAnnotatedString()
         ExpandingAnnotatedText(text, Modifier.padding(8.dp).fillMaxWidth())
     }

@@ -1,14 +1,19 @@
 package com.apkupdater.viewmodel
 
 import androidx.activity.compose.ManagedActivityResultLauncher
+import com.apkupdater.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
 import com.apkupdater.data.ui.SettingsUiState
+import com.apkupdater.data.snack.TextSnack
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.repository.AppsRepository
 import com.apkupdater.ui.theme.isDarkTheme
 import com.apkupdater.util.Clipboard
+import com.apkupdater.util.Downloader
+import com.apkupdater.util.SnackBar
+import com.apkupdater.util.Stringer
 import com.apkupdater.util.Themer
 import com.apkupdater.util.UpdatesNotification
 import com.apkupdater.worker.UpdatesWorker
@@ -28,7 +33,10 @@ class SettingsViewModel(
 	private val clipboard: Clipboard,
 	private val appsRepository: AppsRepository,
 	private val gson: Gson = GsonBuilder().setPrettyPrinting().create(),
-	private val themer: Themer
+	private val themer: Themer,
+	private val downloader: Downloader,
+	private val snackBar: SnackBar,
+	private val stringer: Stringer
 ) : ViewModel() {
 
 	val state = MutableStateFlow<SettingsUiState>(SettingsUiState.Settings)
@@ -127,6 +135,10 @@ class SettingsViewModel(
 
 	fun getDownloadDir() = prefs.downloadDir.get()
 	fun setDownloadDir(path: String) = prefs.downloadDir.put(path)
+	fun clearDownloadCache() = viewModelScope.launch(Dispatchers.IO) {
+		val removed = downloader.clearDownloadCache()
+		snackBar.snackBar(viewModelScope, TextSnack(stringer.get(R.string.download_cache_cleared, removed)))
+	}
 	fun getIgnoreSameVersion() = prefs.ignoreSameVersion.get()
 	fun setIgnoreSameVersion(b: Boolean) = prefs.ignoreSameVersion.put(b)
 	fun getApkMirrorArch() = prefs.apkMirrorArch.get()

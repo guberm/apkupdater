@@ -260,6 +260,6 @@ fun ButtonSetting(
         }
     }
     IconButton(onClick = onClick) {
-        Icon(painterResource(iconButton), stringResource(R.string.copy_to_clipboard))
+        Icon(painterResource(iconButton), text)
     }
 }

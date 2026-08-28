@@ -1,11 +1,39 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import java.io.FileInputStream
+import java.io.File
 import java.util.Properties
 
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+}
+
+val signingProperties = Properties().apply {
+    listOf(
+        rootProject.file("local.properties"),
+        File(System.getProperty("user.home"), ".android/apkupdater-signing.properties")
+    ).filter(File::isFile).forEach { propertiesFile ->
+        propertiesFile.inputStream().use(::load)
+    }
+}
+
+fun signingValue(environmentName: String, propertyName: String) =
+    System.getenv(environmentName)?.takeIf(String::isNotBlank)
+        ?: signingProperties.getProperty(propertyName)?.takeIf(String::isNotBlank)
+
+val releaseStoreFile = signingValue("APKUPDATER_KEYSTORE_FILE", "keystore.file")?.let(::file)
+val releaseStorePassword = signingValue("APKUPDATER_STORE_PASSWORD", "keystore.password")
+val releaseKeyAlias = signingValue("APKUPDATER_KEY_ALIAS", "keystore.keyalias")
+val releaseKeyPassword = signingValue("APKUPDATER_KEY_PASSWORD", "keystore.keypassword")
+val releaseSigningConfigured = releaseStoreFile?.isFile == true &&
+    listOf(releaseStorePassword, releaseKeyAlias, releaseKeyPassword).all { !it.isNullOrBlank() }
+val releaseRequested = gradle.startParameter.taskNames.any {
+    val task = it.substringAfterLast(':')
+    task.equals("build", ignoreCase = true) || task.contains("release", ignoreCase = true)
+}
+
+if (releaseRequested && !releaseSigningConfigured) {
+    throw GradleException("Release signing is not configured. Set APKUPDATER_* variables or ~/.android/apkupdater-signing.properties.")
 }
 
 kotlin {
@@ -23,28 +51,19 @@ android {
         applicationId = "com.apkupdater" + System.getenv("BUILD_TAG").orEmpty()
         minSdk = 23
         targetSdk = 36
-        versionCode = if (buildNumber.isEmpty()) 61 else buildNumber.toInt()
-        versionName = if (buildNumber.isEmpty()) "3.1.2" else "0.0.$buildNumber"
+        versionCode = if (buildNumber.isEmpty()) 62 else buildNumber.toInt()
+        versionName = if (buildNumber.isEmpty()) "3.1.3" else "0.0.$buildNumber"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
 
     signingConfigs {
         create("release") {
-            try {
-                val props = Properties()
-                props.load(FileInputStream(file("../local.properties")))
-                storeFile = file(props.getProperty("keystore.file"))
-                storePassword = props.getProperty("keystore.password")
-                keyAlias = props.getProperty("keystore.keyalias")
-                keyPassword = props.getProperty("keystore.keypassword")
-            } catch (_: Exception) {
-                val config = signingConfigs.getByName("debug")
-                storeFile = config.storeFile
-                storePassword = config.storePassword
-                keyAlias = config.keyAlias
-                keyPassword = config.keyPassword
-                println("Signing config not found. Using debug settings.")
+            if (releaseSigningConfigured) {
+                storeFile = releaseStoreFile
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
             }
             enableV3Signing = true
         }

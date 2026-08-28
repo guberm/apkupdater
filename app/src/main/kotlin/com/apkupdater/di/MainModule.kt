@@ -199,7 +199,7 @@ val mainModule = module {
 
 	viewModel { UpdatesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), androidApplication()) }
 
-	viewModel { SettingsViewModel(get(), get(), WorkManager.getInstance(get()), get(), get(), get(), get()) }
+	viewModel { SettingsViewModel(get(), get(), WorkManager.getInstance(get()), get(), get(), get(), get(), get(), get(), get()) }
 
 	viewModel { SearchViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
 

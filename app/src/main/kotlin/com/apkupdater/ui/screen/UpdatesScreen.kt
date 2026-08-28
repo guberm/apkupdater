@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -45,6 +46,7 @@ import com.apkupdater.ui.component.TvUpdateItem
 import com.apkupdater.ui.theme.statusBarColor
 import com.apkupdater.viewmodel.UpdatesFilter
 import com.apkupdater.viewmodel.UpdatesViewModel
+import com.apkupdater.viewmodel.prepareUpdates
 import org.koin.compose.koinInject
 
 
@@ -164,17 +166,22 @@ fun UpdatesScreenSuccess(
 	val currentFilter by viewModel.filterMode.collectAsStateWithLifecycle()
 	val currentQuery by viewModel.filterQuery.collectAsStateWithLifecycle()
 	val groupByPackage by viewModel.groupByPackage.collectAsStateWithLifecycle()
-	val displayedUpdates = run {
-		val filtered = viewModel.filteredUpdates(updates, currentFilter, currentQuery)
-		if (groupByPackage) filtered.distinctBy { it.packageName } else filtered
-	}
+	val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+	val filteredUpdates = viewModel.filteredUpdates(updates, currentFilter, currentQuery)
+	val displayedUpdates = prepareUpdates(filteredUpdates, groupByPackage)
 
 	UpdatesTopBar(viewModel)
 	UpdatesFilterBar(viewModel, updates)
 
-	when {
-		displayedUpdates.isEmpty() -> EmptyGrid(stringResource(R.string.no_updates_found))
-		else -> TvGrid(viewModel, displayedUpdates, updates, groupByPackage, handler)
+	PullToRefreshBox(
+		isRefreshing = isRefreshing,
+		onRefresh = { viewModel.refresh(load = false) },
+		modifier = Modifier.weight(1f)
+	) {
+		when {
+			displayedUpdates.isEmpty() -> EmptyGrid(stringResource(R.string.no_updates_found))
+			else -> TvGrid(viewModel, displayedUpdates, filteredUpdates, groupByPackage, handler)
+		}
 	}
 }
 
@@ -182,18 +189,20 @@ fun UpdatesScreenSuccess(
 fun TvGrid(
 	viewModel: UpdatesViewModel,
 	updates: List<AppUpdate>,
-	allUpdates: List<AppUpdate>,
+	filteredUpdates: List<AppUpdate>,
 	groupByPackage: Boolean,
 	handler: UriHandler
 ) = TvInstalledGrid {
 	items(updates) { update ->
-		val alts = if (groupByPackage) allUpdates.filter { it.packageName == update.packageName } else listOf(update)
+		val alts = if (groupByPackage) viewModel.getAlternatives(update.packageName, filteredUpdates) else listOf(update)
 		TvUpdateItem(
 			app = update,
 			alternatives = alts,
 			onInstall = { chosen -> viewModel.install(chosen) },
-			onIgnoreVersion = { viewModel.ignoreVersion(update.id) },
-			onIgnoreApp = { viewModel.ignoreApp(update.packageName) },
+			onIgnoreVersion = viewModel::ignoreVersion,
+			onIgnoreVersionFromSource = viewModel::ignoreVersionFromSource,
+			onIgnoreApp = viewModel::ignoreApp,
+			onIgnoreAppFromSource = viewModel::ignoreAppFromSource,
 			onCancel = { viewModel.cancelInstall(alts.firstOrNull { it.isInstalling }?.id ?: update.id) },
 			onOpenSource = { chosen -> viewModel.openSource(chosen, handler) }
 		)

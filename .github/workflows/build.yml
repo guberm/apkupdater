@@ -1,6 +1,10 @@
 name: Android Build
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [3.x]
+    tags: ['3.*']
+  pull_request:
 
 permissions:
   contents: write
@@ -18,33 +22,55 @@ jobs:
         java-version: '17'
         cache: 'gradle'
 
-    - name: Decode Keystore
-      env:
-        KEYSTORE: ${{ secrets.KEYSTORE }}
-      run: echo $KEYSTORE | base64 --decode > ./app/ci.ks
+    - name: Build and test pull request
+      if: github.event_name == 'pull_request'
+      run: ./gradlew test assembleDebug
 
-    - name: Decode Properties
+    - name: Configure release signing
+      if: github.event_name == 'push'
       env:
-        PROPERTIES: ${{ secrets.PROPERTIES }}
-      run: echo $PROPERTIES | base64 --decode > local.properties
+        KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+        STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+      run: |
+        test -n "$KEYSTORE_BASE64"
+        test -n "$STORE_PASSWORD"
+        test -n "$KEY_ALIAS"
+        test -n "$KEY_PASSWORD"
+        printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/apkupdater-release.jks"
 
-    - name: Build with Gradle
+    - name: Build and test signed release
+      if: github.event_name == 'push'
       env:
-        BUILD_TAG: ${{ github.event_name == 'pull_request' && '.ci' || '' }}
-        BUILD_NUMBER: ${{ github.event_name == 'pull_request' && github.run_number || '' }}
-      run: ./gradlew build
+        APKUPDATER_KEYSTORE_FILE: ${{ runner.temp }}/apkupdater-release.jks
+        APKUPDATER_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+        APKUPDATER_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+        APKUPDATER_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+      run: ./gradlew test assembleRelease
+
+    - name: Verify release signature
+      if: github.event_name == 'push'
+      run: |
+        BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+        "$BUILD_TOOLS/apksigner" verify --print-certs ./app/build/outputs/apk/release/com.apkupdater-release.apk
+
+    - name: Remove decoded keystore
+      if: always() && github.event_name == 'push'
+      run: rm -f "$RUNNER_TEMP/apkupdater-release.jks"
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
-      if: "${{ github.event_name == 'push' && github.ref == 'refs/heads/3.x' && contains(github.event.head_commit.message, 'release: APKUpdater 3.1.2') }}"
+      if: startsWith(github.ref, 'refs/tags/')
       with:
-        tag_name: 3.1.2
-        name: APKUpdater 3.1.2
+        tag_name: ${{ github.ref_name }}
+        name: APKUpdater ${{ github.ref_name }}
         files: ./app/build/outputs/apk/release/com.apkupdater-release.apk
         body: |
-          Single TV-style UI release for Android devices.
-
-          - Fixed action buttons wrapping on narrow phone and tablet screens.
-          - Prevented install progress text from collapsing vertically.
-          - Rendered HTML release notes without visible markup.
+          - Restored pull-to-refresh on the Updates screen.
+          - Added source-specific app and version ignore actions.
+          - Added source selection for grouped update cards.
+          - Improved update card layout and old/new version labels.
+          - Added Clear Download Cache in Settings.
+          - Introduced a persistent release signature for this and future releases.
         prerelease: false

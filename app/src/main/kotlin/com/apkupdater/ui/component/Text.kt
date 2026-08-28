@@ -89,11 +89,11 @@ fun MediumTitle(text: String, modifier: Modifier = Modifier) = Text(
 )
 
 @Composable
-fun LargeTitle(text: String, modifier: Modifier = Modifier) = Text(
+fun LargeTitle(text: String, modifier: Modifier = Modifier, maxLines: Int = 1) = Text(
     text = text,
     style = MaterialTheme.typography.titleLarge,
     fontWeight = FontWeight.Bold,
-    maxLines = 1,
+    maxLines = maxLines,
     overflow = TextOverflow.Ellipsis,
     modifier = modifier
 )

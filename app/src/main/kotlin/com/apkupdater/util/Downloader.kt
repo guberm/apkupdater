@@ -26,6 +26,8 @@ class Downloader(
 
     private val activeCalls = ConcurrentHashMap<Int, Call>()
 
+    fun clearDownloadCache(): Int = clearDownloadCache(dir)
+
     fun cancelDownload(id: Int) {
         activeCalls.remove(id)?.cancel()
     }
@@ -244,3 +246,6 @@ class Downloader(
         .build()
 
 }
+
+internal fun clearDownloadCache(directory: File): Int =
+    directory.listFiles()?.count { it.deleteRecursively() } ?: 0

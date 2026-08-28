@@ -12,6 +12,11 @@
     <string name="ignore_app">Ignore App</string>
     <string name="unignore_app">Unignore App</string>
     <string name="ignore_app_cd">Ignore app from all sources</string>
+    <string name="ignore_app_source">Ignore app from %1$s</string>
+    <string name="ignore_version_all_sources">Ignore this version from all sources</string>
+    <string name="ignore_version_source">Ignore %1$s from %2$s</string>
+    <string name="old_version_format">Old: %1$s (%2$s)</string>
+    <string name="new_version_format">New: %1$s (%2$s)</string>
     <string name="cancel_install">Cancel</string>
     <string name="cancel_install_cd">Cancel download</string>
     <string name="filter_all">All</string>
@@ -27,6 +32,9 @@
     <string name="settings_group_by_default">Group Apps by Default</string>
     <string name="settings_download_dir">Download Directory</string>
     <string name="settings_download_dir_default">Default (cache)</string>
+    <string name="settings_clear_download_cache">Clear Download Cache</string>
+    <string name="settings_clear_download_cache_description">Removes temporary APK files only</string>
+    <string name="download_cache_cleared">Removed %1$d cached download(s)</string>
     <string name="refresh_updates">Look for Updates</string>
     <string name="exclude_system_apps">Exclude System Apps</string>
     <string name="include_system_apps">Include System Apps</string>
