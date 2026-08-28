@@ -24,7 +24,7 @@ This branch uses one TV-style, D-pad-friendly layout on phones, tablets, Android
 
 ## Download
 
-- [APKUpdater 3.1.1](https://github.com/guberm/apkupdater-private/releases/download/3.1.1/com.apkupdater-release.apk)
+- [APKUpdater 3.1.2](https://github.com/guberm/apkupdater-private/releases/download/3.1.2/com.apkupdater-release.apk)
 
 ## Build
 

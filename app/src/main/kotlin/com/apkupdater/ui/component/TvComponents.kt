@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -33,8 +36,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.core.text.HtmlCompat
 import com.apkupdater.R
-import com.apkupdater.data.ui.ApkMirrorSource
-import com.apkupdater.data.ui.ApkPureSource
 import com.apkupdater.data.ui.AppInstalled
 import com.apkupdater.data.ui.AppUpdate
 import com.apkupdater.data.ui.Link
@@ -89,7 +90,9 @@ fun TvInstallButton(
     var expanded by remember { mutableStateOf(false) }
     val installing = alternatives.firstOrNull { it.isInstalling }
     ElevatedButton(
-        modifier = Modifier.padding(top = 0.dp, bottom = 8.dp, start = 8.dp, end = 8.dp),
+        modifier = Modifier
+            .padding(top = 0.dp, bottom = 8.dp, start = 8.dp, end = 8.dp)
+            .widthIn(min = 64.dp),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         onClick = {
             if (installing != null) onCancel()
@@ -100,7 +103,7 @@ fun TvInstallButton(
         if (installing != null) {
             if (installing.total != 0L && installing.progress != 0L) {
                 val p = (installing.progress.toFloat() / installing.total) * 100f
-                Text("${p.to2f()}%")
+                Text("${p.to2f()}%", maxLines = 1)
             } else {
                 CircularProgressIndicator(Modifier.size(24.dp))
             }
@@ -141,7 +144,7 @@ fun TvInstalledItem(app: AppInstalled, onIgnore: (String) -> Unit = {}) = Card(
 ) {
     Column {
         TvCommonItem(app.packageName, app.name, app.version, null, app.versionCode, null)
-        Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.End) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             ElevatedButton(
                 modifier = Modifier.padding(top = 0.dp, bottom = 8.dp, start = 8.dp, end = 8.dp),
                 onClick = { onIgnore(app.packageName) }
@@ -186,6 +189,7 @@ fun TvOpenSourceButton(
     Text(stringResource(R.string.open_source))
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TvUpdateItem(
     app: AppUpdate,
@@ -199,7 +203,10 @@ fun TvUpdateItem(
     Column {
         TvCommonItem(app.packageName, app.name, app.version, app.oldVersion, app.versionCode, app.oldVersionCode)
         WhatsNew(app.whatsNew, app.source)
-        Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.End) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
             TvOpenSourceButton(app, onOpenSource)
             TvIgnoreAppButton(app, onIgnoreApp)
             TvIgnoreVersionButton(app, onIgnoreVersion)
@@ -220,7 +227,7 @@ fun TvSearchItem(
         WhatsNew(app.whatsNew, app.source)
         Box {
             TvSourceIcon(app)
-            Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.End) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TvOpenSourceButton(app, onOpenSource)
                 if (app.link != Link.Empty) {
                     TvInstallButton(app, listOf(app), { onInstall(it.packageName) }, onCancel)
@@ -233,11 +240,9 @@ fun TvSearchItem(
 @Composable
 fun WhatsNew(whatsNew: String, source: Source) {
     if (whatsNew.isNotEmpty()) {
-        val text = if (source == ApkMirrorSource || source == ApkPureSource) {
-            HtmlCompat.fromHtml(whatsNew.trim(), HtmlCompat.FROM_HTML_MODE_COMPACT).toAnnotatedString()
-        } else {
-            AnnotatedString(whatsNew)
-        }
+        val text = HtmlCompat
+            .fromHtml(whatsNew.trim(), HtmlCompat.FROM_HTML_MODE_COMPACT)
+            .toAnnotatedString()
         ExpandingAnnotatedText(text, Modifier.padding(8.dp).fillMaxWidth())
     }
 }

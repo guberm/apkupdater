@@ -36,14 +36,15 @@ jobs:
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
-      if: "${{ github.event_name == 'push' && github.ref == 'refs/heads/3.x' && contains(github.event.head_commit.message, 'release: APKUpdater 3.1.1') }}"
+      if: "${{ github.event_name == 'push' && github.ref == 'refs/heads/3.x' && contains(github.event.head_commit.message, 'release: APKUpdater 3.1.2') }}"
       with:
-        tag_name: 3.1.1
-        name: APKUpdater 3.1.1
+        tag_name: 3.1.2
+        name: APKUpdater 3.1.2
         files: ./app/build/outputs/apk/release/com.apkupdater-release.apk
         body: |
           Single TV-style UI release for Android devices.
 
-          - Restored launcher visibility on phones, tablets, Android TV, and Google TV.
-          - Kept only the TV-style layout and removed the separate phone UI.
+          - Fixed action buttons wrapping on narrow phone and tablet screens.
+          - Prevented install progress text from collapsing vertically.
+          - Rendered HTML release notes without visible markup.
         prerelease: false
