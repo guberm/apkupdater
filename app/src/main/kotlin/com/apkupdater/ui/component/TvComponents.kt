@@ -241,3 +241,12 @@ fun WhatsNew(whatsNew: String, source: Source) {
         ExpandingAnnotatedText(text, Modifier.padding(8.dp).fillMaxWidth())
     }
 }
+
+@Composable
+fun DefaultErrorScreen() = Box(Modifier.fillMaxSize()) {
+    HugeText(
+        stringResource(R.string.something_went_wrong),
+        Modifier.align(Alignment.Center),
+        2
+    )
+}

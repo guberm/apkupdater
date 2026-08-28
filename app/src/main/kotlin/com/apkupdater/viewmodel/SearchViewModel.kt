@@ -69,7 +69,7 @@ class SearchViewModel(
         }
     }
 
-    override fun cancelInstall(id: Int) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
+    public override fun cancelInstall(id: Int) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
         downloader2.cancelDownload(id)
         state.value = SearchUiState.Success(state.value.mutableUpdates().setIsInstalling(id, false))
         installer.finish()

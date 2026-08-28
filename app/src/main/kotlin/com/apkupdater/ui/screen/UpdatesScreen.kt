@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.apkupdater.R
 import com.apkupdater.data.ui.AppUpdate
+import com.apkupdater.prefs.Prefs
 import com.apkupdater.ui.component.DefaultErrorScreen
 import com.apkupdater.ui.component.DownloadIcon
 import com.apkupdater.ui.component.EmptyGrid
@@ -44,6 +45,7 @@ import com.apkupdater.ui.component.TvUpdateItem
 import com.apkupdater.ui.theme.statusBarColor
 import com.apkupdater.viewmodel.UpdatesFilter
 import com.apkupdater.viewmodel.UpdatesViewModel
+import org.koin.compose.koinInject
 
 
 @Composable
