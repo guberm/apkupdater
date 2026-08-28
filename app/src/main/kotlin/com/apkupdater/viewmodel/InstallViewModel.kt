@@ -17,6 +17,7 @@ import com.apkupdater.util.InstallLog
 import com.apkupdater.util.SessionInstaller
 import com.apkupdater.util.SnackBar
 import com.apkupdater.util.Stringer
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -91,6 +92,7 @@ abstract class InstallViewModel(
         when (link) {
             Link.Empty -> {
                 Log.e("InstallViewModel", "downloadAndInstall: Unsupported.")
+                sendDownloadFailure(packageName)
                 cancelInstall(id)
             }
             is Link.Play -> {
@@ -131,6 +133,7 @@ abstract class InstallViewModel(
                 val stream = downloader.downloadStream(link.link, id)
                 if (stream == null) {
                     Log.e("InstallViewModel", "downloadAndInstall: download failed for $packageName")
+                    sendDownloadFailure(packageName)
                     cancelInstall(id)
                 } else {
                     installer.installPackage(id, packageName, stream)
@@ -140,6 +143,7 @@ abstract class InstallViewModel(
                 val stream = downloader.downloadStream(link.link, id)
                 if (stream == null) {
                     Log.e("InstallViewModel", "downloadAndInstall: XAPK download failed for $packageName")
+                    sendDownloadFailure(packageName)
                     cancelInstall(id)
                 } else {
                     installer.installXapk(id, packageName, stream)
@@ -147,8 +151,14 @@ abstract class InstallViewModel(
             }
         }
     }.getOrElse {
+        if (it is CancellationException) throw it
         Log.e("InstallViewModel", "Error in downloadAndInstall.", it)
+        sendDownloadFailure(packageName)
         cancelInstall(id)
+    }
+
+    private fun sendDownloadFailure(packageName: String) {
+        snackBar.snackBar(viewModelScope, TextSnack(stringer.get(R.string.download_failure, packageName)))
     }
 
     protected abstract fun sendInstallSnack(log: AppInstallStatus)

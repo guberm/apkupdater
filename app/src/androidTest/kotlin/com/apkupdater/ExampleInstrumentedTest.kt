@@ -9,6 +9,7 @@ import com.apkupdater.viewmodel.shouldKeepUpdateForIgnoredUpdates
 import com.apkupdater.viewmodel.ignoreAppSourceKey
 import com.apkupdater.viewmodel.ignoreVersionKey
 import com.apkupdater.viewmodel.ignoreVersionSourceKey
+import com.apkupdater.util.Downloader
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 
@@ -16,6 +17,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 import org.junit.Assert.*
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
+import java.io.File
+import java.io.IOException
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -72,6 +80,34 @@ class ExampleInstrumentedTest {
         assertFalse(shouldKeepUpdateForIgnoredUpdates(play, ignored))
         assertFalse(shouldKeepUpdateForIgnoredUpdates(github, ignored))
         assertTrue(shouldKeepUpdateForIgnoredUpdates(play.copy(versionCode = 11), ignored))
+    }
+
+    @Test
+    fun streamedDownloadsRetryTransientIoFailures() {
+        val attempts = AtomicInteger()
+        val client = OkHttpClient.Builder().addInterceptor { chain ->
+            if (attempts.incrementAndGet() < 3) throw IOException("temporary failure")
+            Response.Builder()
+                .request(chain.request())
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body("apk".toResponseBody())
+                .build()
+        }.build()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val directory = File(context.cacheDir, "download-retry-test").apply { mkdirs() }
+
+        try {
+            val downloader = Downloader(client, client, client, directory, context)
+            val content = downloader.downloadStream("https://example.com/app.apk", 42)
+                ?.use { it.readBytes().decodeToString() }
+
+            assertEquals("apk", content)
+            assertEquals(3, attempts.get())
+        } finally {
+            directory.deleteRecursively()
+        }
     }
 
     private fun update(packageName: String, versionCode: Long) = AppUpdate(

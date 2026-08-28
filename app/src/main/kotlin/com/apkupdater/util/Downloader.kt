@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 import okhttp3.Call
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
@@ -25,10 +26,12 @@ class Downloader(
 ) {
 
     private val activeCalls = ConcurrentHashMap<Int, Call>()
+    private val cancelledDownloads = ConcurrentHashMap.newKeySet<Int>()
 
     fun clearDownloadCache(): Int = clearDownloadCache(dir)
 
     fun cancelDownload(id: Int) {
+        cancelledDownloads.add(id)
         activeCalls.remove(id)?.cancel()
     }
 
@@ -57,17 +60,7 @@ class Downloader(
     /** Downloads [url] to a temp file using the correct client for the URL, returns the file. Retries on transient IO errors. */
     fun downloadFile(url: String, onProgress: ((Long, Long) -> Unit)? = null): File {
         val resolved = resolveDownloadUrl(url)
-        val clientName = when {
-            resolved.url.contains("apkpure") -> "apkPureClient"
-            ApkMirrorDownloadResolver.isApkMirrorUrl(resolved.url) -> "auroraClient"
-            else -> "auroraClient"
-        }
-        val c = when {
-            resolved.url.contains("apkpure") -> apkPureClient
-            ApkMirrorDownloadResolver.isApkMirrorUrl(resolved.url) -> auroraClient
-            // Play Store and all other URLs use auroraClient (long timeouts, proper UA)
-            else -> auroraClient
-        }
+        val (clientName, c) = downloadClient(resolved.url)
         var lastException: Exception? = null
         repeat(3) { attempt ->
             val file = File(dir, randomUUID())
@@ -111,47 +104,49 @@ class Downloader(
         throw lastException ?: IOException("Download failed: ${resolved.url}")
     }
 
-    fun downloadStream(url: String, downloadId: Int = -1): InputStream? = runCatching {
+    fun downloadStream(url: String, downloadId: Int = -1): InputStream? {
         val resolved = resolveDownloadUrl(url)
-        val clientName = when {
-            resolved.url.contains("apkpure") -> "apkPureClient"
-            ApkMirrorDownloadResolver.isApkMirrorUrl(resolved.url) -> "auroraClient"
-            resolved.url.contains("aurora") -> "auroraClient"
-            else -> "client"
-        }
-        val c = when {
-            resolved.url.contains("apkpure") -> apkPureClient
-            ApkMirrorDownloadResolver.isApkMirrorUrl(resolved.url) -> auroraClient
-            resolved.url.contains("aurora") -> auroraClient
-            else -> client
-        }
-        Log.d("Downloader", "downloadStream: url=${resolved.url} downloadId=$downloadId client=$clientName")
-        val call = c.newCall(downloadRequest(resolved.url, resolved.referer))
-        if (downloadId >= 0) activeCalls[downloadId] = call
-        val response = call.execute()
-        if (response.isSuccessful && !response.isUnexpectedApkMirrorHtml(url)) {
-            Log.d("Downloader", "downloadStream: success code=${response.code} url=${resolved.url}")
-            val bodyStream = response.body.byteStream()
-            return object : FilterInputStream(bodyStream) {
-                override fun close() {
-                    try {
-                        super.close()
-                    } finally {
-                        response.close()
-                        if (downloadId >= 0) activeCalls.remove(downloadId, call)
-                    }
-                }
+        val (clientName, c) = downloadClient(resolved.url)
+        if (downloadId >= 0) cancelledDownloads.remove(downloadId)
+
+        repeat(3) { attempt ->
+            if (downloadId >= 0 && cancelledDownloads.contains(downloadId)) {
+                throw CancellationException("Download cancelled: $downloadId")
             }
-        } else {
-            response.close()
-            if (downloadId >= 0) activeCalls.remove(downloadId, call)
-            Log.e("Downloader", "downloadStream: FAILED code=${response.code} url=${resolved.url}")
+            val call = c.newCall(downloadRequest(resolved.url, resolved.referer))
+            if (downloadId >= 0) activeCalls[downloadId] = call
+            Log.d("Downloader", "downloadStream: attempt=${attempt + 1} url=${resolved.url} downloadId=$downloadId client=$clientName")
+            try {
+                val response = call.execute()
+                if (response.isSuccessful && !response.isUnexpectedApkMirrorHtml(url)) {
+                    Log.d("Downloader", "downloadStream: success code=${response.code} attempt=${attempt + 1} url=${resolved.url}")
+                    val bodyStream = response.body.byteStream()
+                    return object : FilterInputStream(bodyStream) {
+                        override fun close() {
+                            try {
+                                super.close()
+                            } finally {
+                                response.close()
+                                if (downloadId >= 0) activeCalls.remove(downloadId, call)
+                            }
+                        }
+                    }
+                } else {
+                    val code = response.code
+                    response.close()
+                    if (downloadId >= 0) activeCalls.remove(downloadId, call)
+                    Log.e("Downloader", "downloadStream: FAILED code=$code attempt=${attempt + 1} url=${resolved.url}")
+                }
+            } catch (error: IOException) {
+                if (downloadId >= 0) activeCalls.remove(downloadId, call)
+                if (downloadId >= 0 && cancelledDownloads.contains(downloadId)) {
+                    throw CancellationException("Download cancelled: $downloadId", error)
+                }
+                Log.e("Downloader", "downloadStream: IOException attempt=${attempt + 1} url=${resolved.url}", error)
+            }
         }
+        Log.e("Downloader", "downloadStream: all retries exhausted url=${resolved.url}")
         return null
-    }.getOrElse {
-        if (downloadId >= 0) activeCalls.remove(downloadId)
-        Log.e("Downloader", "downloadStream: exception url=$url", it)
-        null
     }
 
     /** Downloads [url] into the SAF tree [treeUri] with the given [filename]. Returns the new document URI, or null on failure. */
@@ -225,6 +220,11 @@ class Downloader(
     }.getOrElse {
         Log.e("Downloader", "resolveDownloadUrl: failed url=$url", it)
         ResolvedDownloadUrl(url)
+    }
+
+    private fun downloadClient(url: String) = when {
+        url.contains("apkpure") -> "apkPureClient" to apkPureClient
+        else -> "auroraClient" to auroraClient
     }
 
     private fun Response.isUnexpectedApkMirrorHtml(originalUrl: String): Boolean {

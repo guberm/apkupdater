@@ -72,5 +72,6 @@ jobs:
           - Added source selection for grouped update cards.
           - Improved update card layout and old/new version labels.
           - Added Clear Download Cache in Settings.
+          - Retried transient download failures and added a visible final error.
           - Introduced a persistent release signature for this and future releases.
         prerelease: false
