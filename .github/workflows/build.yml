@@ -1,4 +1,4 @@
-name: Android TV Build
+name: Android Build
 
 on: [push, pull_request]
 
@@ -36,14 +36,14 @@ jobs:
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
-      if: "${{ github.event_name == 'push' && github.ref == 'refs/heads/3.x' && contains(github.event.head_commit.message, 'release: APKUpdater TV 3.1.1') }}"
+      if: "${{ github.event_name == 'push' && github.ref == 'refs/heads/3.x' && contains(github.event.head_commit.message, 'release: APKUpdater 3.1.1') }}"
       with:
         tag_name: 3.1.1
-        name: APKUpdater TV 3.1.1
+        name: APKUpdater 3.1.1
         files: ./app/build/outputs/apk/release/com.apkupdater-release.apk
         body: |
-          Android TV-only release.
+          Single TV-style UI release for Android devices.
 
-          - Restored launcher visibility across Android TV and Google TV launchers.
-          - Kept Android TV as a required device capability.
+          - Restored launcher visibility on phones, tablets, Android TV, and Google TV.
+          - Kept only the TV-style layout and removed the separate phone UI.
         prerelease: false

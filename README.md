@@ -1,12 +1,12 @@
-# APKUpdater TV
+# APKUpdater
 
-APKUpdater TV finds and installs updates for apps already installed on Android TV. It aggregates APKMirror, Aptoide, F-Droid, IzzyOnDroid, APKPure, GitLab, GitHub, and Google Play instead of depending on a single store.
+APKUpdater finds and installs updates for apps already installed on Android devices. It aggregates APKMirror, Aptoide, F-Droid, IzzyOnDroid, APKPure, GitLab, GitHub, and Google Play instead of depending on a single store.
 
-This branch is TV-only. A Leanback-capable Android TV device is required; phone and tablet launchers and layouts are intentionally not included.
+This branch uses one TV-style, D-pad-friendly layout on phones, tablets, Android TV, and Google TV. The separate phone UI and UI mode switches are intentionally not included.
 
 ## Features
 
-- TV-first, D-pad-friendly interface built with Jetpack Compose and Material 3.
+- A single TV-style interface built with Jetpack Compose and Material 3.
 - Update and search results from APKMirror, Aptoide, F-Droid, IzzyOnDroid, APKPure, GitLab, GitHub, and Google Play.
 - Direct APK, APKM, APKS, XAPK, and split-package installation where supported.
 - A **Source** button that opens the provider page for each result.
@@ -19,13 +19,12 @@ This branch is TV-only. A Leanback-capable Android TV device is required; phone 
 
 ## Requirements
 
-- Android TV with Leanback support.
 - Android 6.0 (API 23) or newer.
 - Permission to install unknown apps for direct installation.
 
 ## Download
 
-- [APKUpdater TV 3.1.0](https://github.com/guberm/apkupdater-private/releases/download/3.1.0/com.apkupdater-release.apk)
+- [APKUpdater 3.1.1](https://github.com/guberm/apkupdater-private/releases/download/3.1.1/com.apkupdater-release.apk)
 
 ## Build
 

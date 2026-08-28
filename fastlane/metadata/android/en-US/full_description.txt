@@ -1,7 +1,9 @@
-APKUpdater TV finds and installs updates for apps on Android TV from APKMirror, Aptoide, F-Droid, IzzyOnDroid, APKPure, GitLab, GitHub, and Google Play.
+APKUpdater finds and installs updates for apps on Android devices from APKMirror, Aptoide, F-Droid, IzzyOnDroid, APKPure, GitLab, GitHub, and Google Play.
+
+This edition uses a single TV-style, D-pad-friendly interface on phones, tablets, Android TV, and Google TV.
 
 Features:
-* TV-only D-pad interface.
+* One consistent TV-style interface across supported Android devices.
 * Direct APK, APKM, APKS, XAPK, and split-package installation where supported.
 * Source buttons that open each provider page.
 * Background update checks and notifications.
@@ -10,4 +12,4 @@ Features:
 * Dark, light, and system themes.
 * No ads and no tracking.
 
-Requires an Android TV device with Leanback support and Android 6.0 or newer.
+Requires Android 6.0 or newer.
