@@ -36,16 +36,14 @@ jobs:
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
-      if: "${{ github.event_name == 'push' && github.ref == 'refs/heads/3.x' && contains(github.event.head_commit.message, 'release: APKUpdater TV 3.1.0') }}"
+      if: "${{ github.event_name == 'push' && github.ref == 'refs/heads/3.x' && contains(github.event.head_commit.message, 'release: APKUpdater TV 3.1.1') }}"
       with:
-        tag_name: 3.1.0
-        name: APKUpdater TV 3.1.0
+        tag_name: 3.1.1
+        name: APKUpdater TV 3.1.1
         files: ./app/build/outputs/apk/release/com.apkupdater-release.apk
         body: |
           Android TV-only release.
 
-          - Removed the phone UI and all UI mode switches.
-          - Fixed intermittent installer callback crashes.
-          - Added Source buttons for opening provider pages.
-          - Hardened downloads, cancellation, and install-session cleanup.
+          - Restored launcher visibility across Android TV and Google TV launchers.
+          - Kept Android TV as a required device capability.
         prerelease: false
