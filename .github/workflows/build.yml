@@ -24,7 +24,7 @@ jobs:
 
     - name: Build and test pull request
       if: github.event_name == 'pull_request'
-      run: ./gradlew test assembleDebug
+      run: ./gradlew test lint assembleDebug
 
     - name: Configure release signing
       if: github.event_name == 'push'
@@ -47,7 +47,7 @@ jobs:
         APKUPDATER_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
         APKUPDATER_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
         APKUPDATER_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
-      run: ./gradlew test assembleRelease
+      run: ./gradlew test lint assembleRelease
 
     - name: Verify release signature
       if: github.event_name == 'push'

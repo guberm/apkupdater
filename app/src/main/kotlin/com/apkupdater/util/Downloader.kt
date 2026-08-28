@@ -14,6 +14,7 @@ import java.io.File
 import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
+import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
 
@@ -26,7 +27,7 @@ class Downloader(
 ) {
 
     private val activeCalls = ConcurrentHashMap<Int, Call>()
-    private val cancelledDownloads = ConcurrentHashMap.newKeySet<Int>()
+    private val cancelledDownloads = Collections.newSetFromMap(ConcurrentHashMap<Int, Boolean>())
 
     fun clearDownloadCache(): Int = clearDownloadCache(dir)
 

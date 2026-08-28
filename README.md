@@ -2,7 +2,7 @@
 
 APKUpdater finds and installs updates for apps already installed on Android devices. It aggregates APKMirror, Aptoide, F-Droid, IzzyOnDroid, APKPure, GitLab, GitHub, and Google Play instead of depending on a single store.
 
-This branch uses one TV-style, D-pad-friendly layout on phones, tablets, Android TV, and Google TV. The separate phone UI and UI mode switches are intentionally not included.
+This project is a modified fork of [rumboalla/APKUpdater](https://github.com/rumboalla/apkupdater) with additional features. The changes in this fork were made in 2026. This branch uses one TV-style, D-pad-friendly layout on phones, tablets, Android TV, and Google TV. The separate phone UI and UI mode switches are intentionally not included.
 
 ## Features
 
@@ -24,7 +24,7 @@ This branch uses one TV-style, D-pad-friendly layout on phones, tablets, Android
 
 ## Download
 
-- [APKUpdater 3.1.2](https://github.com/guberm/apkupdater-private/releases/download/3.1.2/com.apkupdater-release.apk)
+- [APKUpdater 3.1.4](https://github.com/guberm/apkupdater/releases/download/3.1.4/com.apkupdater-release.apk)
 
 ## Build
 
@@ -32,7 +32,7 @@ This branch uses one TV-style, D-pad-friendly layout on phones, tablets, Android
 ./gradlew test lint assembleDebug
 ```
 
-Release builds use the signing configuration in `local.properties`; when it is absent, Gradle falls back to the debug key.
+Release builds require signing values from `APKUPDATER_*` environment variables, `local.properties`, or `~/.android/apkupdater-signing.properties`. The build fails when release signing is not configured.
 
 ## License
 
