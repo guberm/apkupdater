@@ -67,7 +67,6 @@ jobs:
         name: APKUpdater ${{ github.ref_name }}
         files: ./app/build/outputs/apk/release/com.apkupdater-release.apk
         body: |
-          - Fixed Google Play downloads when refreshed authentication is required.
-          - Added Send App Logs to Settings.
-          - Updated About links and removed donation and copyright entries.
+          - Stopped repeated Google Play delivery requests when Google returns HTTP 429.
+          - Added a clear rate-limit error instead of immediately refreshing authentication and retrying.
         prerelease: false

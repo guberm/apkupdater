@@ -127,7 +127,8 @@ class PlayRepository(
                     .purchase(app.packageName, app.versionCode, app.offerType)
                     .filter { it.type == PlayFile.Type.BASE || it.type == PlayFile.Type.SPLIT }
             },
-            refreshAuth = { authData = refreshAuth() }
+            refreshAuth = { authData = refreshAuth() },
+            responseCode = { playHttpClient.responseCode.value }
         )
     }
 
@@ -135,20 +136,27 @@ class PlayRepository(
 
 internal fun purchasePlayFiles(
     purchase: () -> List<PlayFile>,
-    refreshAuth: () -> Unit
+    refreshAuth: () -> Unit,
+    responseCode: () -> Int = { 200 }
 ): List<PlayFile> {
     var files = purchase()
-    if (invalidPlayFileUrls(files.map { it.url })) {
+    if (invalidPlayFileUrls(files.map { it.url }) && shouldRefreshPlayAuth(responseCode())) {
         refreshAuth()
         files = purchase()
     }
     check(!invalidPlayFileUrls(files.map { it.url })) {
-        "Google Play returned no downloadable files."
+        if (responseCode() == 429) {
+            "Google Play rate limit reached. Try again later."
+        } else {
+            "Google Play returned no downloadable files."
+        }
     }
     return files
 }
 
 internal fun invalidPlayFileUrls(urls: List<String>) = urls.isEmpty() || urls.any(String::isBlank)
+
+internal fun shouldRefreshPlayAuth(responseCode: Int) = responseCode != 429
 
 fun App.toAppUpdate(
     getInstallFiles: (App) -> List<PlayFile>,
