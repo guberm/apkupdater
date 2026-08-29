@@ -47,13 +47,25 @@ jobs:
         APKUPDATER_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
         APKUPDATER_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
         APKUPDATER_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
-      run: ./gradlew test lint assembleRelease
+      run: |
+        ./gradlew --no-daemon test lint assembleRelease
+        cp ./app/build/outputs/apk/release/com.apkupdater-release.apk "$RUNNER_TEMP/com.apkupdater-release.apk"
+        ./gradlew --no-daemon clean -PsensitiveLogging=true assembleRelease
+        mv ./app/build/outputs/apk/release/com.apkupdater-release.apk ./app/build/outputs/apk/release/com.apkupdater-sensitive-logging-release.apk
+        cp "$RUNNER_TEMP/com.apkupdater-release.apk" ./app/build/outputs/apk/release/com.apkupdater-release.apk
 
     - name: Verify release signature
       if: github.event_name == 'push'
       run: |
         BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
-        "$BUILD_TOOLS/apksigner" verify --print-certs ./app/build/outputs/apk/release/com.apkupdater-release.apk
+        STANDARD=./app/build/outputs/apk/release/com.apkupdater-release.apk
+        DIAGNOSTIC=./app/build/outputs/apk/release/com.apkupdater-sensitive-logging-release.apk
+        "$BUILD_TOOLS/apksigner" verify --print-certs "$STANDARD"
+        "$BUILD_TOOLS/apksigner" verify --print-certs "$DIAGNOSTIC"
+        STANDARD_CERT=$("$BUILD_TOOLS/apksigner" verify --print-certs "$STANDARD" | awk -F': ' '/Signer #1 certificate SHA-256 digest/{print $2}')
+        DIAGNOSTIC_CERT=$("$BUILD_TOOLS/apksigner" verify --print-certs "$DIAGNOSTIC" | awk -F': ' '/Signer #1 certificate SHA-256 digest/{print $2}')
+        test -n "$STANDARD_CERT"
+        test "$STANDARD_CERT" = "$DIAGNOSTIC_CERT"
 
     - name: Remove decoded keystore
       if: always() && github.event_name == 'push'
@@ -65,8 +77,12 @@ jobs:
       with:
         tag_name: ${{ github.ref_name }}
         name: APKUpdater ${{ github.ref_name }}
-        files: ./app/build/outputs/apk/release/com.apkupdater-release.apk
+        files: |
+          ./app/build/outputs/apk/release/com.apkupdater-release.apk
+          ./app/build/outputs/apk/release/com.apkupdater-sensitive-logging-release.apk
         body: |
-          - Stopped repeated Google Play delivery requests when Google returns HTTP 429.
-          - Added a clear rate-limit error instead of immediately refreshing authentication and retrying.
+          - Added detailed refresh diagnostics for every update source and the merged result.
+          - Send App Logs now includes refresh request, result, update, and error details.
+          - The sensitive-logging APK includes full Play request URLs and auth/cookie headers for manual debugging. Do not share its logs.
+          - Both APKs use the same package, version, and signing certificate.
         prerelease: false

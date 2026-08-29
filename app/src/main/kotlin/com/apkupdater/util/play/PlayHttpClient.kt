@@ -2,6 +2,8 @@ package com.apkupdater.util.play
 
 import android.util.Log
 import com.aurora.gplayapi.data.models.PlayResponse
+import com.apkupdater.BuildConfig
+import com.apkupdater.util.toSha256
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +31,7 @@ class PlayHttpClient(
     companion object {
         private const val POST = "POST"
         private const val GET = "GET"
+        private val credentialHeaders = setOf("authorization", "cookie", "set-cookie", "x-dfe-device-id")
     }
 
     private val _responseCode = MutableStateFlow(100)
@@ -160,8 +163,14 @@ class PlayHttpClient(
         // Reset response code as flow doesn't sends the same value twice
         _responseCode.value = 0
 
+        Log.i("PlayHttpClient", "request ${request.logSummary()}")
         val call = okHttpClient.newCall(request)
-        return buildPlayResponse(call.execute())
+        return try {
+            buildPlayResponse(call.execute())
+        } catch (error: IOException) {
+            Log.e("PlayHttpClient", "error ${request.logSummary()}", error)
+            throw error
+        }
     }
 
     private fun buildUrl(url: String, params: Map<String, String>): HttpUrl {
@@ -173,14 +182,35 @@ class PlayHttpClient(
     }
 
     private fun buildPlayResponse(response: Response): PlayResponse {
+        val responseBytes = response.body.bytes()
         return PlayResponse(
             isSuccessful = response.isSuccessful,
             code = response.code,
-            responseBytes = response.body.bytes(),
+            responseBytes = responseBytes,
             errorString = if (!response.isSuccessful) response.message else ""
         ).also {
             _responseCode.value = response.code
-            Log.i("PlayHttpClient", "OKHTTP [${response.code}] ${response.request.url}")
+            Log.i(
+                "PlayHttpClient",
+                "result code=${response.code} bytes=${responseBytes.size} ${response.request.logSummary()} " +
+                    "responseHeaders=${response.headers.logSummary()}"
+            )
         }
     }
+
+    private fun Request.logSummary(): String = if (BuildConfig.SENSITIVE_LOGGING) {
+        "method=$method url=$url headers=$headers bodyBytes=${runCatching { body?.contentLength() }.getOrNull()}"
+    } else {
+        "method=$method endpoint=${url.toString().substringBefore('?')} " +
+            "query=${url.queryParameterNames.sorted()} headers=${headers.names().sorted()} " +
+            "credentials=${headers.credentialFingerprints()} " +
+            "bodyBytes=${runCatching { body?.contentLength() }.getOrNull()}"
+    }
+
+    private fun okhttp3.Headers.logSummary(): String = if (BuildConfig.SENSITIVE_LOGGING) toString().trim() else
+        "names=${names().sorted()} credentials=${credentialFingerprints()}"
+
+    private fun okhttp3.Headers.credentialFingerprints(): Map<String, String> = names()
+        .filter { it.lowercase() in credentialHeaders }
+        .associateWith { values(it).joinToString("\n").toByteArray().toSha256().take(12) }
 }

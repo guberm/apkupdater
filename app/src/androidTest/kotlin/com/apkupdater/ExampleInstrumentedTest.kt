@@ -1,6 +1,7 @@
 package com.apkupdater
 
 import android.net.Uri
+import android.util.Log
 import com.apkupdater.data.ui.AppUpdate
 import com.apkupdater.data.ui.GitHubSource
 import com.apkupdater.data.ui.PlaySource
@@ -10,6 +11,7 @@ import com.apkupdater.viewmodel.ignoreAppSourceKey
 import com.apkupdater.viewmodel.ignoreVersionKey
 import com.apkupdater.viewmodel.ignoreVersionSourceKey
 import com.apkupdater.util.Downloader
+import com.apkupdater.util.readAppLogs
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 
@@ -37,6 +39,14 @@ class ExampleInstrumentedTest {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         assertEquals(BuildConfig.APPLICATION_ID, appContext.packageName)
+    }
+
+    @Test
+    fun appLogsIncludeLogcatEntries() {
+        val marker = "apkupdater-app-logs-test-${System.nanoTime()}"
+        Log.i("AppLogsTest", marker)
+
+        assertTrue(readAppLogs().contains(marker))
     }
 
     @Test

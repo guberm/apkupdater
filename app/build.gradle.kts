@@ -31,6 +31,7 @@ val releaseRequested = gradle.startParameter.taskNames.any {
     val task = it.substringAfterLast(':')
     task.equals("build", ignoreCase = true) || task.contains("release", ignoreCase = true)
 }
+val sensitiveLogging = providers.gradleProperty("sensitiveLogging").orNull == "true"
 
 if (releaseRequested && !releaseSigningConfigured) {
     throw GradleException("Release signing is not configured. Set APKUPDATER_* variables or ~/.android/apkupdater-signing.properties.")
@@ -51,8 +52,9 @@ android {
         applicationId = "com.apkupdater" + System.getenv("BUILD_TAG").orEmpty()
         minSdk = 23
         targetSdk = 36
-        versionCode = if (buildNumber.isEmpty()) 65 else buildNumber.toInt()
-        versionName = if (buildNumber.isEmpty()) "3.1.6" else "0.0.$buildNumber"
+        versionCode = if (buildNumber.isEmpty()) 66 else buildNumber.toInt()
+        versionName = if (buildNumber.isEmpty()) "3.1.7" else "0.0.$buildNumber"
+        buildConfigField("boolean", "SENSITIVE_LOGGING", sensitiveLogging.toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
