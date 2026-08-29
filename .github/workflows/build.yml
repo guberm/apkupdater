@@ -62,8 +62,8 @@ jobs:
         DIAGNOSTIC=./app/build/outputs/apk/release/com.apkupdater-sensitive-logging-release.apk
         "$BUILD_TOOLS/apksigner" verify --print-certs "$STANDARD"
         "$BUILD_TOOLS/apksigner" verify --print-certs "$DIAGNOSTIC"
-        STANDARD_CERT=$("$BUILD_TOOLS/apksigner" verify --print-certs "$STANDARD" | awk -F': ' '/Signer #1 certificate SHA-256 digest/{print $2}')
-        DIAGNOSTIC_CERT=$("$BUILD_TOOLS/apksigner" verify --print-certs "$DIAGNOSTIC" | awk -F': ' '/Signer #1 certificate SHA-256 digest/{print $2}')
+        STANDARD_CERT=$("$BUILD_TOOLS/apksigner" verify --print-certs "$STANDARD" | awk -F': ' '/certificate SHA-256 digest/{print $2; exit}')
+        DIAGNOSTIC_CERT=$("$BUILD_TOOLS/apksigner" verify --print-certs "$DIAGNOSTIC" | awk -F': ' '/certificate SHA-256 digest/{print $2; exit}')
         test -n "$STANDARD_CERT"
         test "$STANDARD_CERT" = "$DIAGNOSTIC_CERT"
 
