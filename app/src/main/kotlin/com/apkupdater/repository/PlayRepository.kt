@@ -138,15 +138,17 @@ internal fun purchasePlayFiles(
     refreshAuth: () -> Unit
 ): List<PlayFile> {
     var files = purchase()
-    if (files.isEmpty() || files.any { it.url.isBlank() }) {
+    if (invalidPlayFileUrls(files.map { it.url })) {
         refreshAuth()
         files = purchase()
     }
-    check(files.isNotEmpty() && files.all { it.url.isNotBlank() }) {
+    check(!invalidPlayFileUrls(files.map { it.url })) {
         "Google Play returned no downloadable files."
     }
     return files
 }
+
+internal fun invalidPlayFileUrls(urls: List<String>) = urls.isEmpty() || urls.any(String::isBlank)
 
 fun App.toAppUpdate(
     getInstallFiles: (App) -> List<PlayFile>,
