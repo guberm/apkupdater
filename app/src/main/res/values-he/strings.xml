@@ -50,7 +50,6 @@
     <string name="theme_dark">כהה</string>
     <string name="theme_light">בהיר</string>
     <string name="about_github">לקוד מקור, דיווח שגיאות, בקשה לתכוניות חדשות ותרגומים.</string>
-    <string name="about_donate">אם אהבת את הישומון, שקול לתרום למטרה הנעלה.</string>
     <string name="copy_to_clipboard">העתק לזיכרון</string>
     <string name="copy_app_list">העתק רשימת ישומונים</string>
 

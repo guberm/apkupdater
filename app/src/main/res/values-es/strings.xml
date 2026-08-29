@@ -48,7 +48,6 @@
     <string name="theme_dark">Oscura</string>
     <string name="theme_light">Claro</string>
     <string name="about_github">Obtenga el código fuente, informe errores, solicite nuevas funciones y agregue traducciones.</string>
-    <string name="about_donate">Si te gusta la aplicación, considera hacer una donación a una buena causa.</string>
     <string name="copy_to_clipboard">Copiar a la portapapeles</string>
     <string name="copy_app_list">Copiar lista de aplicaciones</string>
 

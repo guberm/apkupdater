@@ -53,7 +53,6 @@
     <string name="theme_dark">Sombre</string>
     <string name="theme_light">Clair</string>
     <string name="about_github">Obtenez le code source, signalez des bugs, demandez de nouvelles fonctionnalités et ajoutez des traductions.</string>
-    <string name="about_donate">Si vous aimez l\'application, envisagez de faire un don à une cause qui en vaut la peine.</string>
     <string name="copy_to_clipboard">Copier dans le presse-papiers</string>
     <string name="copy_app_list">Copier la liste des applications</string>
     <string name="copy_app_logs">Copier les journaux de l\'application</string>

@@ -67,11 +67,7 @@ jobs:
         name: APKUpdater ${{ github.ref_name }}
         files: ./app/build/outputs/apk/release/com.apkupdater-release.apk
         body: |
-          - Restored pull-to-refresh on the Updates screen.
-          - Added source-specific app and version ignore actions.
-          - Added source selection for grouped update cards.
-          - Improved update card layout and old/new version labels.
-          - Added Clear Download Cache in Settings.
-          - Retried transient download failures and added a visible final error.
-          - Introduced a persistent release signature for this and future releases.
+          - Fixed Google Play downloads when refreshed authentication is required.
+          - Added Send App Logs to Settings.
+          - Updated About links and removed donation and copyright entries.
         prerelease: false

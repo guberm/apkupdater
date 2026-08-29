@@ -53,7 +53,6 @@
     <string name="theme_dark">深色</string>
     <string name="theme_light">淺色</string>
     <string name="about_github">取得原始碼、回報錯誤、請求新功能並添加翻譯。</string>
-    <string name="about_donate">如果你喜歡這個應用程式，請考慮捐贈。</string>
     <string name="copy_to_clipboard">複製到剪貼簿</string>
     <string name="copy_app_list">複製應用程式列表</string>
     <string name="copy_app_logs">複製應用程式日誌</string>

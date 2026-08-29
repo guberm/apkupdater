@@ -48,7 +48,6 @@
     <string name="theme_dark">အမှောင်</string>
     <string name="theme_light">အလင်း</string>
     <string name="about_github">ပင်ရင်းကုဒ်တွင် ဘာသာစကားများ၊ လိုအပ်ချက်များ၊ ပါဝင်မှုအသစ်များ ထည့်သွင်းရန်။</string>
-    <string name="about_donate">ယခုအပ်ပလီကေးရှင်းကိုနှစ်သက်ပါက ကူညီလှူတန်းရန်။</string>
     <string name="copy_to_clipboard">ကော်ပီကူးယူသည်</string>
     <string name="copy_app_list">Appလိပ်စာကိုကူးယူသည်</string>
 

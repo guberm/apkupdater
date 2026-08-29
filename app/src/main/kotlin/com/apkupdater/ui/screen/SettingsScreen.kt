@@ -40,7 +40,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
 import com.apkupdater.BuildConfig
 import com.apkupdater.R
 import com.apkupdater.data.ui.GitHubSource
@@ -58,7 +57,6 @@ import com.apkupdater.ui.theme.statusBarColor
 import com.apkupdater.util.getAppName
 import com.apkupdater.viewmodel.SettingsViewModel
 import org.koin.compose.viewmodel.koinViewModel
-import java.util.Calendar
 
 
 @Composable
@@ -87,51 +85,20 @@ fun About() = LazyColumn(
 			LoadingImageApp(BuildConfig.APPLICATION_ID)
 			LargeTitle(stringResource(R.string.app_name), Modifier.align(CenterHorizontally))
 			MediumText("${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", Modifier.align(CenterHorizontally))
-			MediumText("Copyright © 2016-${Calendar.getInstance().get(Calendar.YEAR)} rumboalla", Modifier.align(CenterHorizontally))
 		}
 	}
 	item {
 		AboutItem(
 			"GitHub - APKUpdater",
 			stringResource(R.string.about_github),
-			"https://github.com/rumboalla/apkupdater",
+			"https://github.com/guberm/apkupdater",
 			{ SourceIcon(GitHubSource, Modifier.size(64.dp).align(CenterVertically)) }
 		)
 		AboutItem(
-			"Donate - Malaria Consortium",
-			stringResource(R.string.about_donate),
-			"https://www.malariaconsortium.org/support-us/donate.htm",
-			{
-				AsyncImage(
-					"https://www.malariaconsortium.org/website-2017/_images/logo-mc.png",
-					"Malaria Consortium",
-					Modifier.size(64.dp).align(CenterVertically)
-				)
-			}
-		)
-		AboutItem(
-			"Donate - New Incentives",
-			stringResource(R.string.about_donate),
-			"https://www.newincentives.org/donate",
-			{
-				AsyncImage(
-					"https://i.vimeocdn.com/portrait/81193504_60x60",
-					"New Incentives",
-					Modifier.size(64.dp).align(CenterVertically)
-				)
-			}
-		)
-		AboutItem(
-			"Donate - Sightsavers",
-			stringResource(R.string.about_donate),
-			"https://donate.sightsavers.org/smxpatron/global/donate.html",
-			{
-				AsyncImage(
-					"https://www.sightsavers.org/wp-content/uploads/2017/10/Sightsavers-Author-Placeholder.png",
-					"Sightsavers",
-					Modifier.size(64.dp).align(CenterVertically)
-				)
-			}
+			"Guber.dev",
+			stringResource(R.string.about_guber_dev),
+			"https://guber.dev",
+			{ Icon(Icons.Default.Info, "Guber.dev", Modifier.size(64.dp).align(CenterVertically)) }
 		)
 	}
 }
@@ -313,6 +280,7 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 		)
 	}
 	item {
+		val context = LocalContext.current
 		LargeTitle(stringResource(R.string.settings_utils), Modifier.padding(start = 16.dp, top = 16.dp))
 		ButtonSetting(
 			stringResource(R.string.copy_app_list),
@@ -325,6 +293,12 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 			{ viewModel.copyAppLogs() },
 			R.drawable.ic_root,
 			R.drawable.ic_copy
+		)
+		ButtonSetting(
+			stringResource(R.string.send_app_logs),
+			{ viewModel.sendAppLogs(context) },
+			R.drawable.ic_root,
+			R.drawable.ic_send
 		)
 	}
 	item {

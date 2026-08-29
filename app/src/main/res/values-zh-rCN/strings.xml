@@ -45,7 +45,6 @@
 
     <!-- 通知 -->
     <string name="about_github">获取源代码、报告错误、请求新功能以及添加翻译。</string>
-    <string name="about_donate">如果你喜欢这个应用程序，请考虑捐赠。</string>
     <string name="copy_to_clipboard">复制到剪贴板</string>
     <string name="copy_app_list">复制应用列表</string>
     <string name="copy_app_logs">复制应用日志</string>

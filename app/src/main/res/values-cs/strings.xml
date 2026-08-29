@@ -48,7 +48,6 @@
     <string name="theme_dark">Tmavý</string>
     <string name="theme_light">Světlý</string>
     <string name="about_github">Získejte zdrojový kód, nahlaste chyby, požádejte o nové funkce a přidejte překlady.</string>
-    <string name="about_donate">Pokud se vám aplikace líbí, zvažte dar na dobrou věc.</string>
     <string name="copy_to_clipboard">Kopírovat do schránky</string>
     <string name="copy_app_list">Kopírovat seznam aplikací</string>
     <string name="copy_app_logs">Kopírovat logy aplikací</string>

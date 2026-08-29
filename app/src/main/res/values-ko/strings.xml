@@ -51,7 +51,6 @@
     <string name="theme_dark">어둡게</string>
     <string name="theme_light">밝게</string>
     <string name="about_github">소스 코드, 버그 보고, 새로운 기능 요청, 번역 추가 해주세요.</string>
-    <string name="about_donate">앱이 마음에 든다면 기부 해주세요 :) .</string>
     <string name="copy_to_clipboard">클립보드에 복사</string>
     <string name="copy_app_list">앱 목록 복사</string>
 

@@ -118,11 +118,34 @@ class PlayRepository(
         Log.e("PlayRepository", "Error looking for updates.", it)
     }
 
-    private fun getInstallFiles(app: App) = PurchaseHelper(auth())
-        .using(playHttpClient)
-        .purchase(app.packageName, app.versionCode, app.offerType)
-        .filter { it.type == PlayFile.Type.BASE || it.type == PlayFile.Type.SPLIT }
+    private fun getInstallFiles(app: App): List<PlayFile> {
+        var authData = auth()
+        return purchasePlayFiles(
+            purchase = {
+                PurchaseHelper(authData)
+                    .using(playHttpClient)
+                    .purchase(app.packageName, app.versionCode, app.offerType)
+                    .filter { it.type == PlayFile.Type.BASE || it.type == PlayFile.Type.SPLIT }
+            },
+            refreshAuth = { authData = refreshAuth() }
+        )
+    }
 
+}
+
+internal fun purchasePlayFiles(
+    purchase: () -> List<PlayFile>,
+    refreshAuth: () -> Unit
+): List<PlayFile> {
+    var files = purchase()
+    if (files.isEmpty() || files.any { it.url.isBlank() }) {
+        refreshAuth()
+        files = purchase()
+    }
+    check(files.isNotEmpty() && files.all { it.url.isNotBlank() }) {
+        "Google Play returned no downloadable files."
+    }
+    return files
 }
 
 fun App.toAppUpdate(

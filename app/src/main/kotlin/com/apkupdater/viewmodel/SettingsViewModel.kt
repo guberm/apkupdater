@@ -1,6 +1,10 @@
 package com.apkupdater.viewmodel
 
+import android.content.Context
+import android.content.Intent
 import androidx.activity.compose.ManagedActivityResultLauncher
+import androidx.core.content.FileProvider
+import com.apkupdater.BuildConfig
 import com.apkupdater.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,6 +20,8 @@ import com.apkupdater.util.SnackBar
 import com.apkupdater.util.Stringer
 import com.apkupdater.util.Themer
 import com.apkupdater.util.UpdatesNotification
+import com.apkupdater.util.readAppLogs
+import com.apkupdater.util.writeAppLogs
 import com.apkupdater.worker.UpdatesWorker
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -24,6 +30,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 
 class SettingsViewModel(
@@ -153,9 +161,29 @@ class SettingsViewModel(
 	}
 
 	fun copyAppLogs() = viewModelScope.launch(Dispatchers.IO) {
-		val process = Runtime.getRuntime().exec("logcat -d")
-		val data = process.inputStream.readBytes()
-		clipboard.copy(data.decodeToString(), "App Logs")
+		clipboard.copy(readAppLogs(), "App Logs")
+	}
+
+	fun sendAppLogs(context: Context) = viewModelScope.launch {
+		runCatching {
+			val intent = withContext(Dispatchers.IO) {
+				val file = writeAppLogs(File(context.cacheDir, "shared"), readAppLogs())
+				val uri = FileProvider.getUriForFile(
+					context,
+					"${BuildConfig.APPLICATION_ID}.fileprovider",
+					file
+				)
+				Intent(Intent.ACTION_SEND).apply {
+					type = "text/plain"
+					putExtra(Intent.EXTRA_SUBJECT, "APKUpdater Logs")
+					putExtra(Intent.EXTRA_STREAM, uri)
+					addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+				}
+			}
+			context.startActivity(Intent.createChooser(intent, stringer.get(R.string.send_app_logs)))
+		}.onFailure {
+			snackBar.snackBar(viewModelScope, TextSnack(stringer.get(R.string.send_app_logs_failure)))
+		}
 	}
 
 }
