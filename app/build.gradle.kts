@@ -53,8 +53,8 @@ android {
         applicationId = "com.apkupdater" + System.getenv("BUILD_TAG").orEmpty()
         minSdk = 23
         targetSdk = 36
-        versionCode = if (buildNumber.isEmpty()) 72 else buildNumber.toInt()
-        versionName = if (buildNumber.isEmpty()) "3.1.13" else "0.0.$buildNumber"
+        versionCode = if (buildNumber.isEmpty()) 73 else buildNumber.toInt()
+        versionName = if (buildNumber.isEmpty()) "3.1.14" else "0.0.$buildNumber"
         buildConfigField("boolean", "SENSITIVE_LOGGING", sensitiveLogging.toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -116,10 +116,12 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.7")
     implementation("androidx.navigation:navigation-runtime-ktx:2.9.7")
     implementation("androidx.work:work-runtime-ktx:2.11.1")
-    implementation("com.github.rumboalla.KryptoPrefs:kryptoprefs-gson:0.4.3")
+    implementation("com.github.rumboalla.KryptoPrefs:kryptoprefs-gson:0.4.3") {
+        exclude(group = "org.jetbrains.kotlin", module = "kotlin-android-extensions-runtime")
+    }
     implementation("com.github.rumboalla.KryptoPrefs:kryptoprefs:0.4.3")
     implementation("com.github.topjohnwu.libsu:core:6.0.0")
-    implementation("com.auroraoss:gplayapi:3.5.8")
+    implementation("com.auroraoss:gplayapi:3.6.4")
     compileOnly("dev.rikka.hidden:stub:4.4.0")
     implementation("dev.rikka.tools.refine:runtime:4.4.0")
     implementation("dev.rikka.shizuku:api:13.1.5")
