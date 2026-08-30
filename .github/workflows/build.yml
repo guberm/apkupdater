@@ -81,9 +81,8 @@ jobs:
           ./app/build/outputs/apk/release/com.apkupdater-release.apk
           ./app/build/outputs/apk/release/com.apkupdater-sensitive-logging-release.apk
         body: |
-          - Add an optional Shizuku installer in Settings.
-          - Shizuku installs are recorded with Google Play as Android's installer of record; the initiating package remains Android shell.
-          - Requires Shizuku to be running and permission granted to APKUpdater.
+          - Improve Google Play download recovery by trying up to five anonymous accounts when delivery is rate-limited.
+          - Keep retries bounded and reuse the first working account for later downloads.
           - Installer metadata does not grant Google Play account ownership, licensing, or Play Integrity entitlement.
           - The sensitive-logging APK includes full Play request URLs and auth/cookie headers for manual debugging. Do not share its logs.
           - Both APKs use the same package, version, and signing certificate.

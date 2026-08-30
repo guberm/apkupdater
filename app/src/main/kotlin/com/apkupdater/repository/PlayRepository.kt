@@ -143,7 +143,7 @@ internal fun purchasePlayFiles(
         action = purchase,
         refresh = refreshAuth,
         shouldRetry = { invalidPlayFileUrls(it.map(PlayFile::url)) },
-        maxRefreshes = { if (responseCode() == 429) 2 else 1 }
+        maxRefreshes = { playAuthRefreshes(responseCode()) }
     )
     check(!invalidPlayFileUrls(files.map { it.url })) {
         if (responseCode() == 429) {
@@ -156,6 +156,8 @@ internal fun purchasePlayFiles(
 }
 
 internal fun invalidPlayFileUrls(urls: List<String>) = urls.isEmpty() || urls.any(String::isBlank)
+
+internal fun playAuthRefreshes(responseCode: Int) = if (responseCode == 429) 4 else 1
 
 internal fun <T> retryAfterRefresh(
     action: () -> T,
