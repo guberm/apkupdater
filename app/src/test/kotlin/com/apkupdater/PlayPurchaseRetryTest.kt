@@ -1,8 +1,8 @@
 package com.apkupdater
 
 import com.apkupdater.repository.invalidPlayFileUrls
-import com.apkupdater.repository.shouldRefreshPlayAuth
-import com.apkupdater.util.play.executeWithPlayRateLimitRetry
+import com.apkupdater.repository.purchasePlayFiles
+import com.aurora.gplayapi.data.models.PlayFile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -18,39 +18,32 @@ class PlayPurchaseRetryTest {
     }
 
     @Test
-    fun doesNotRefreshAuthWhenGoogleRateLimitsDelivery() {
-        assertFalse(shouldRefreshPlayAuth(429))
-        assertTrue(shouldRefreshPlayAuth(200))
+    fun refreshesAuthOnceWhenGoogleRateLimitsDelivery() {
+        var purchaseAttempts = 0
+        var authRefreshes = 0
+
+        val files = purchasePlayFiles(
+            purchase = {
+                purchaseAttempts++
+                listOf(
+                    PlayFile(
+                        "base",
+                        "base.apk",
+                        if (purchaseAttempts == 1) "" else "https://example.com/base.apk",
+                        1L,
+                        PlayFile.Type.BASE,
+                        "",
+                        ""
+                    )
+                )
+            },
+            refreshAuth = { authRefreshes++ },
+            responseCode = { 429 }
+        )
+
+        assertEquals("https://example.com/base.apk", files.single().url)
+        assertEquals(2, purchaseAttempts)
+        assertEquals(1, authRefreshes)
     }
 
-    @Test
-    fun retriesRateLimitedPlayDeliveryWithBackoff() {
-        val responseCodes = ArrayDeque(listOf(429, 429, 200))
-        val delays = mutableListOf<Long>()
-
-        val response = executeWithPlayRateLimitRetry(
-            method = "GET",
-            encodedPath = "/fdfe/delivery",
-            responseCode = { it },
-            sleep = { delays += it }
-        ) {
-            responseCodes.removeFirst()
-        }
-
-        assertEquals(200, response)
-        assertEquals(listOf(1_000L, 2_000L), delays)
-    }
-
-    @Test
-    fun doesNotRetryRateLimitedPlayPurchase() {
-        var attempts = 0
-
-        val response = executeWithPlayRateLimitRetry("POST", "/fdfe/purchase", { it }) {
-            attempts++
-            429
-        }
-
-        assertEquals(429, response)
-        assertEquals(1, attempts)
-    }
 }

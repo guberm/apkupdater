@@ -165,9 +165,7 @@ class PlayHttpClient(
 
         Log.i("PlayHttpClient", "request ${request.logSummary()}")
         return try {
-            executeWithPlayRateLimitRetry(request.method, request.url.encodedPath, { it.code }) {
-                okHttpClient.newCall(request).execute().use(::buildPlayResponse)
-            }
+            okHttpClient.newCall(request).execute().use(::buildPlayResponse)
         } catch (error: IOException) {
             Log.e("PlayHttpClient", "error ${request.logSummary()}", error)
             throw error
@@ -214,22 +212,4 @@ class PlayHttpClient(
     private fun okhttp3.Headers.credentialFingerprints(): Map<String, String> = names()
         .filter { it.lowercase() in credentialHeaders }
         .associateWith { values(it).joinToString("\n").toByteArray().toSha256().take(12) }
-}
-
-internal fun <T> executeWithPlayRateLimitRetry(
-    method: String,
-    encodedPath: String,
-    responseCode: (T) -> Int,
-    sleep: (Long) -> Unit = { Thread.sleep(it) },
-    execute: () -> T
-): T {
-    var response = execute()
-    if (method != "GET" || encodedPath != "/fdfe/delivery") return response
-
-    for (delay in longArrayOf(1_000L, 2_000L, 4_000L)) {
-        if (responseCode(response) != 429) return response
-        sleep(delay)
-        response = execute()
-    }
-    return response
 }

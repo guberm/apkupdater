@@ -140,7 +140,7 @@ internal fun purchasePlayFiles(
     responseCode: () -> Int = { 200 }
 ): List<PlayFile> {
     var files = purchase()
-    if (invalidPlayFileUrls(files.map { it.url }) && shouldRefreshPlayAuth(responseCode())) {
+    if (invalidPlayFileUrls(files.map { it.url })) {
         refreshAuth()
         files = purchase()
     }
@@ -155,8 +155,6 @@ internal fun purchasePlayFiles(
 }
 
 internal fun invalidPlayFileUrls(urls: List<String>) = urls.isEmpty() || urls.any(String::isBlank)
-
-internal fun shouldRefreshPlayAuth(responseCode: Int) = responseCode != 429
 
 fun App.toAppUpdate(
     getInstallFiles: (App) -> List<PlayFile>,

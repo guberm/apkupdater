@@ -81,8 +81,8 @@ jobs:
           ./app/build/outputs/apk/release/com.apkupdater-release.apk
           ./app/build/outputs/apk/release/com.apkupdater-sensitive-logging-release.apk
         body: |
-          - Retry temporary Google Play delivery rate limits with bounded backoff.
-          - HTTP rate-limit retries are restricted to the idempotent delivery download.
+          - Refresh anonymous Google Play authentication once when delivery returns no downloadable files, including HTTP 429.
+          - Remove repeated delivery requests that reused the same rate-limited session.
           - The sensitive-logging APK includes full Play request URLs and auth/cookie headers for manual debugging. Do not share its logs.
           - Both APKs use the same package, version, and signing certificate.
         prerelease: false
