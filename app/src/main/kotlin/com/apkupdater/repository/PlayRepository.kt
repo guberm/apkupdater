@@ -139,11 +139,11 @@ internal fun purchasePlayFiles(
     refreshAuth: () -> Unit,
     responseCode: () -> Int = { 200 }
 ): List<PlayFile> {
-    var files = purchase()
-    if (invalidPlayFileUrls(files.map { it.url })) {
-        refreshAuth()
-        files = purchase()
-    }
+    val files = retryOnceAfterRefresh(
+        action = purchase,
+        refresh = refreshAuth,
+        shouldRetry = { invalidPlayFileUrls(it.map(PlayFile::url)) }
+    )
     check(!invalidPlayFileUrls(files.map { it.url })) {
         if (responseCode() == 429) {
             "Google Play rate limit reached. Try again later."
@@ -155,6 +155,19 @@ internal fun purchasePlayFiles(
 }
 
 internal fun invalidPlayFileUrls(urls: List<String>) = urls.isEmpty() || urls.any(String::isBlank)
+
+internal fun <T> retryOnceAfterRefresh(
+    action: () -> T,
+    refresh: () -> Unit,
+    shouldRetry: (T) -> Boolean
+): T {
+    var result = action()
+    if (shouldRetry(result)) {
+        refresh()
+        result = action()
+    }
+    return result
+}
 
 fun App.toAppUpdate(
     getInstallFiles: (App) -> List<PlayFile>,

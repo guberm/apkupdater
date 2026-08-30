@@ -1,8 +1,7 @@
 package com.apkupdater
 
 import com.apkupdater.repository.invalidPlayFileUrls
-import com.apkupdater.repository.purchasePlayFiles
-import com.aurora.gplayapi.data.models.PlayFile
+import com.apkupdater.repository.retryOnceAfterRefresh
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -22,26 +21,16 @@ class PlayPurchaseRetryTest {
         var purchaseAttempts = 0
         var authRefreshes = 0
 
-        val files = purchasePlayFiles(
-            purchase = {
+        val url = retryOnceAfterRefresh(
+            action = {
                 purchaseAttempts++
-                listOf(
-                    PlayFile(
-                        "base",
-                        "base.apk",
-                        if (purchaseAttempts == 1) "" else "https://example.com/base.apk",
-                        1L,
-                        PlayFile.Type.BASE,
-                        "",
-                        ""
-                    )
-                )
+                if (purchaseAttempts == 1) "" else "https://example.com/base.apk"
             },
-            refreshAuth = { authRefreshes++ },
-            responseCode = { 429 }
+            refresh = { authRefreshes++ },
+            shouldRetry = String::isBlank
         )
 
-        assertEquals("https://example.com/base.apk", files.single().url)
+        assertEquals("https://example.com/base.apk", url)
         assertEquals(2, purchaseAttempts)
         assertEquals(1, authRefreshes)
     }
