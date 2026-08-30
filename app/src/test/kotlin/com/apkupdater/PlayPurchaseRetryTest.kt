@@ -1,7 +1,7 @@
 package com.apkupdater
 
 import com.apkupdater.repository.invalidPlayFileUrls
-import com.apkupdater.repository.retryOnceAfterRefresh
+import com.apkupdater.repository.retryAfterRefresh
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -17,22 +17,23 @@ class PlayPurchaseRetryTest {
     }
 
     @Test
-    fun refreshesAuthOnceWhenGoogleRateLimitsDelivery() {
+    fun rotatesAuthTwiceWhenGoogleRateLimitsDelivery() {
         var purchaseAttempts = 0
         var authRefreshes = 0
 
-        val url = retryOnceAfterRefresh(
+        val url = retryAfterRefresh(
             action = {
                 purchaseAttempts++
-                if (purchaseAttempts == 1) "" else "https://example.com/base.apk"
+                if (purchaseAttempts < 3) "" else "https://example.com/base.apk"
             },
             refresh = { authRefreshes++ },
-            shouldRetry = String::isBlank
+            shouldRetry = String::isBlank,
+            maxRefreshes = { 2 }
         )
 
         assertEquals("https://example.com/base.apk", url)
-        assertEquals(2, purchaseAttempts)
-        assertEquals(1, authRefreshes)
+        assertEquals(3, purchaseAttempts)
+        assertEquals(2, authRefreshes)
     }
 
 }

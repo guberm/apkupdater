@@ -52,8 +52,8 @@ android {
         applicationId = "com.apkupdater" + System.getenv("BUILD_TAG").orEmpty()
         minSdk = 23
         targetSdk = 36
-        versionCode = if (buildNumber.isEmpty()) 68 else buildNumber.toInt()
-        versionName = if (buildNumber.isEmpty()) "3.1.9" else "0.0.$buildNumber"
+        versionCode = if (buildNumber.isEmpty()) 69 else buildNumber.toInt()
+        versionName = if (buildNumber.isEmpty()) "3.1.10" else "0.0.$buildNumber"
         buildConfigField("boolean", "SENSITIVE_LOGGING", sensitiveLogging.toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true

@@ -139,10 +139,11 @@ internal fun purchasePlayFiles(
     refreshAuth: () -> Unit,
     responseCode: () -> Int = { 200 }
 ): List<PlayFile> {
-    val files = retryOnceAfterRefresh(
+    val files = retryAfterRefresh(
         action = purchase,
         refresh = refreshAuth,
-        shouldRetry = { invalidPlayFileUrls(it.map(PlayFile::url)) }
+        shouldRetry = { invalidPlayFileUrls(it.map(PlayFile::url)) },
+        maxRefreshes = { if (responseCode() == 429) 2 else 1 }
     )
     check(!invalidPlayFileUrls(files.map { it.url })) {
         if (responseCode() == 429) {
@@ -156,15 +157,18 @@ internal fun purchasePlayFiles(
 
 internal fun invalidPlayFileUrls(urls: List<String>) = urls.isEmpty() || urls.any(String::isBlank)
 
-internal fun <T> retryOnceAfterRefresh(
+internal fun <T> retryAfterRefresh(
     action: () -> T,
     refresh: () -> Unit,
-    shouldRetry: (T) -> Boolean
+    shouldRetry: (T) -> Boolean,
+    maxRefreshes: () -> Int
 ): T {
     var result = action()
-    if (shouldRetry(result)) {
+    var refreshes = 0
+    while (shouldRetry(result) && refreshes < maxRefreshes()) {
         refresh()
         result = action()
+        refreshes++
     }
     return result
 }
