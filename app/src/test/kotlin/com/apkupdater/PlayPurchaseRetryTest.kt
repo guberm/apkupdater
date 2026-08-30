@@ -3,7 +3,6 @@ package com.apkupdater
 import com.apkupdater.repository.invalidPlayFileUrls
 import com.apkupdater.repository.shouldRefreshPlayAuth
 import com.apkupdater.util.play.executeWithPlayRateLimitRetry
-import com.aurora.gplayapi.data.models.PlayResponse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -32,18 +31,13 @@ class PlayPurchaseRetryTest {
         val response = executeWithPlayRateLimitRetry(
             method = "GET",
             encodedPath = "/fdfe/delivery",
+            responseCode = { it },
             sleep = { delays += it }
         ) {
-            val code = responseCodes.removeFirst()
-            PlayResponse(
-                isSuccessful = code == 200,
-                code = code,
-                responseBytes = byteArrayOf(),
-                errorString = ""
-            )
+            responseCodes.removeFirst()
         }
 
-        assertEquals(200, response.code)
+        assertEquals(200, response)
         assertEquals(listOf(1_000L, 2_000L), delays)
     }
 
@@ -51,17 +45,12 @@ class PlayPurchaseRetryTest {
     fun doesNotRetryRateLimitedPlayPurchase() {
         var attempts = 0
 
-        val response = executeWithPlayRateLimitRetry("POST", "/fdfe/purchase") {
+        val response = executeWithPlayRateLimitRetry("POST", "/fdfe/purchase", { it }) {
             attempts++
-            PlayResponse(
-                isSuccessful = false,
-                code = 429,
-                responseBytes = byteArrayOf(),
-                errorString = ""
-            )
+            429
         }
 
-        assertEquals(429, response.code)
+        assertEquals(429, response)
         assertEquals(1, attempts)
     }
 }

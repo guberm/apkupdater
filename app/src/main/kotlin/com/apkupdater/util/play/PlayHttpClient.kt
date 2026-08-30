@@ -165,7 +165,7 @@ class PlayHttpClient(
 
         Log.i("PlayHttpClient", "request ${request.logSummary()}")
         return try {
-            executeWithPlayRateLimitRetry(request.method, request.url.encodedPath) {
+            executeWithPlayRateLimitRetry(request.method, request.url.encodedPath, { it.code }) {
                 okHttpClient.newCall(request).execute().use(::buildPlayResponse)
             }
         } catch (error: IOException) {
@@ -216,17 +216,18 @@ class PlayHttpClient(
         .associateWith { values(it).joinToString("\n").toByteArray().toSha256().take(12) }
 }
 
-internal fun executeWithPlayRateLimitRetry(
+internal fun <T> executeWithPlayRateLimitRetry(
     method: String,
     encodedPath: String,
+    responseCode: (T) -> Int,
     sleep: (Long) -> Unit = { Thread.sleep(it) },
-    execute: () -> PlayResponse
-): PlayResponse {
+    execute: () -> T
+): T {
     var response = execute()
     if (method != "GET" || encodedPath != "/fdfe/delivery") return response
 
     for (delay in longArrayOf(1_000L, 2_000L, 4_000L)) {
-        if (response.code != 429) return response
+        if (responseCode(response) != 429) return response
         sleep(delay)
         response = execute()
     }
