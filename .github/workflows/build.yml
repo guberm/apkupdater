@@ -81,8 +81,8 @@ jobs:
           ./app/build/outputs/apk/release/com.apkupdater-release.apk
           ./app/build/outputs/apk/release/com.apkupdater-sensitive-logging-release.apk
         body: |
-          - Added detailed refresh diagnostics for every update source and the merged result.
-          - Send App Logs now includes refresh request, result, update, and error details.
+          - Retry temporary Google Play delivery rate limits with bounded backoff.
+          - HTTP rate-limit retries are restricted to the idempotent delivery download.
           - The sensitive-logging APK includes full Play request URLs and auth/cookie headers for manual debugging. Do not share its logs.
           - Both APKs use the same package, version, and signing certificate.
         prerelease: false
