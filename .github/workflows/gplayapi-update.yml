@@ -1,0 +1,162 @@
+name: Update GPlayApi
+
+on:
+  schedule:
+    - cron: '17 10 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: gplayapi-auto-release
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Check Maven Central
+        id: versions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current=$(sed -nE 's/.*com\.auroraoss:gplayapi:([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' app/build.gradle.kts)
+          latest=$(curl --fail --silent --show-error \
+            https://repo.maven.apache.org/maven2/com/auroraoss/gplayapi/maven-metadata.xml \
+            | sed -nE 's:.*<release>([0-9]+\.[0-9]+\.[0-9]+)</release>.*:\1:p' \
+            | head -n 1)
+
+          test -n "$current"
+          test -n "$latest"
+
+          if [ "$current" = "$latest" ]; then
+            echo "GPlayApi is current: $current"
+            echo "update_available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          newest=$(printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -n 1)
+          if [ "$newest" != "$latest" ]; then
+            echo "Refusing downgrade from $current to $latest" >&2
+            exit 1
+          fi
+
+          echo "GPlayApi update found: $current -> $latest"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "update_available=true" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Java 17
+        if: steps.versions.outputs.update_available == 'true'
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: '17'
+          cache: gradle
+
+      - name: Update dependency and app version
+        if: steps.versions.outputs.update_available == 'true'
+        id: app_version
+        env:
+          CURRENT_GPLAYAPI: ${{ steps.versions.outputs.current }}
+          LATEST_GPLAYAPI: ${{ steps.versions.outputs.latest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_tag=$(python3 - <<'PY'
+          import os
+          import pathlib
+          import re
+
+          path = pathlib.Path("app/build.gradle.kts")
+          text = path.read_text()
+          current = os.environ["CURRENT_GPLAYAPI"]
+          latest = os.environ["LATEST_GPLAYAPI"]
+
+          text, dependency_count = re.subn(
+              rf'com\.auroraoss:gplayapi:{re.escape(current)}',
+              f'com.auroraoss:gplayapi:{latest}',
+              text,
+          )
+
+          version_code = re.search(
+              r'versionCode = if \(buildNumber\.isEmpty\(\)\) (\d+)',
+              text,
+          )
+          version_name = re.search(
+              r'versionName = if \(buildNumber\.isEmpty\(\)\) "(\d+)\.(\d+)\.(\d+)"',
+              text,
+          )
+
+          if dependency_count != 1 or version_code is None or version_name is None:
+              raise SystemExit("Expected dependency/version declarations were not found exactly once")
+
+          next_code = int(version_code.group(1)) + 1
+          major, minor, patch = map(int, version_name.groups())
+          next_version = f"{major}.{minor}.{patch + 1}"
+
+          text, code_count = re.subn(
+              r'(versionCode = if \(buildNumber\.isEmpty\(\)\) )\d+',
+              rf'\g<1>{next_code}',
+              text,
+              count=1,
+          )
+          text, name_count = re.subn(
+              r'(versionName = if \(buildNumber\.isEmpty\(\)\) ")\d+\.\d+\.\d+(" else)',
+              rf'\g<1>{next_version}\g<2>',
+              text,
+              count=1,
+          )
+
+          if code_count != 1 or name_count != 1:
+              raise SystemExit("App version update was not applied exactly once")
+
+          path.write_text(text)
+          print(next_version)
+          PY
+          )
+
+          git diff --check
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Preflight updated dependency
+        if: steps.versions.outputs.update_available == 'true'
+        run: ./gradlew --no-daemon test lint assembleDebug
+
+      - name: Commit and tag update
+        if: steps.versions.outputs.update_available == 'true'
+        env:
+          LATEST_GPLAYAPI: ${{ steps.versions.outputs.latest }}
+          RELEASE_TAG: ${{ steps.app_version.outputs.release_tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git rev-parse --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            echo "Tag already exists: $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app/build.gradle.kts
+          git commit -m "Upgrade Aurora GPlayApi to $LATEST_GPLAYAPI"
+          git tag -a "$RELEASE_TAG" -m "APKUpdater $RELEASE_TAG"
+          git push --atomic origin HEAD:main "refs/tags/$RELEASE_TAG"
+
+      - name: Dispatch signed release build
+        if: steps.versions.outputs.update_available == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.app_version.outputs.release_tag }}
+        shell: bash
+        run: gh workflow run build.yml --ref main -f release_tag="$RELEASE_TAG"
