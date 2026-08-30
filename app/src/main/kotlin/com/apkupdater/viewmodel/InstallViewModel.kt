@@ -33,7 +33,7 @@ abstract class InstallViewModel(
 ): ViewModel() {
 
     fun install(update: AppUpdate) {
-        if (prefs.rootInstall.get()) {
+        if (useRootInstaller(prefs.rootInstall.get(), prefs.shizukuInstall.get())) {
             downloadAndRootInstall(update)
         } else {
             downloadAndInstall(update)
@@ -168,3 +168,5 @@ abstract class InstallViewModel(
     protected abstract fun finishInstall(id: Int): Job
     protected open fun trackDownloadedUri(id: Int, uri: Uri) {}
 }
+
+internal fun useRootInstaller(root: Boolean, shizuku: Boolean) = root && !shizuku

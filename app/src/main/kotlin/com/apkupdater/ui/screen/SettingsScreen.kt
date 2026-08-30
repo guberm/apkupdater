@@ -27,6 +27,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -249,6 +250,17 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 			stringResource(R.string.settings_experimental_installer),
 			R.drawable.ic_root
 		)
+	}
+	item {
+		val enabled = viewModel.shizukuInstall.collectAsStateWithLifecycle().value
+		key(enabled) {
+			SwitchSetting(
+				{ enabled },
+				{ viewModel.setShizukuInstall(it) },
+				stringResource(R.string.settings_shizuku_installer),
+				R.drawable.ic_root
+			)
+		}
 	}
 
 	item {

@@ -1,6 +1,7 @@
 package com.apkupdater.util
 
 import android.annotation.SuppressLint
+import android.annotation.TargetApi
 import android.app.PendingIntent
 import android.app.PendingIntent.FLAG_MUTABLE
 import android.app.PendingIntent.FLAG_UPDATE_CURRENT
@@ -8,20 +9,31 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.IPackageInstaller
+import android.content.pm.IPackageInstallerSession
+import android.content.pm.IPackageManager
 import android.content.pm.PackageInstaller
+import android.content.pm.PackageInstallerHidden
+import android.content.pm.PackageManager
+import android.content.pm.PackageManagerHidden
 import android.os.Build
 import android.os.Handler
+import android.os.IBinder
+import android.os.IInterface
 import android.os.Looper
 import android.os.Process
 import android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES
 import android.util.Log
+import android.widget.Toast
 import androidx.core.net.toUri
 import com.apkupdater.BuildConfig
+import com.apkupdater.R
 import com.apkupdater.data.ui.AppInstallProgress
 import com.apkupdater.data.ui.AppInstallStatus
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.ui.activity.MainActivity
 import com.topjohnwu.superuser.Shell
+import dev.rikka.tools.refine.Refine
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -34,6 +46,9 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.io.DEFAULT_BUFFER_SIZE
 import kotlin.io.copyTo
 import kotlin.io.outputStream
+import rikka.shizuku.Shizuku
+import rikka.shizuku.ShizukuBinderWrapper
+import rikka.shizuku.SystemServiceHelper
 
 
 @OptIn(ExperimentalAtomicApi::class)
@@ -44,6 +59,18 @@ class SessionInstaller(
 ) {
     companion object {
         const val INSTALL_ACTION = "installAction"
+        const val PLAY_STORE_PACKAGE = "com.android.vending"
+    }
+
+    private fun IBinder.wrapForShizuku() = ShizukuBinderWrapper(this)
+    private fun IInterface.asShizukuBinder() = asBinder().wrapForShizuku()
+
+    private val shizukuPackageManager: IPackageManager by lazy {
+        IPackageManager.Stub.asInterface(SystemServiceHelper.getSystemService("package").wrapForShizuku())
+    }
+
+    private val shizukuPackageInstaller: IPackageInstaller by lazy {
+        IPackageInstaller.Stub.asInterface(shizukuPackageManager.packageInstaller.asShizukuBinder())
     }
 
     init {
@@ -61,11 +88,11 @@ class SessionInstaller(
     private val installNewMutex = Mutex()
 
     suspend fun install(id: Int, packageName: String, stream: InputStream) {
-        if (prefs.newInstaller.get()) installNew(id, packageName, listOf(stream)) else installOld(id, packageName, listOf(stream))
+        if (prefs.shizukuInstall.get() || prefs.newInstaller.get()) installNew(id, packageName, listOf(stream)) else installOld(id, packageName, listOf(stream))
     }
 
     suspend fun install(id: Int, packageName: String, streams: List<InputStream>) {
-        if (prefs.newInstaller.get()) installNew(id, packageName, streams) else installOld(id, packageName, streams)
+        if (prefs.shizukuInstall.get() || prefs.newInstaller.get()) installNew(id, packageName, streams) else installOld(id, packageName, streams)
     }
 
     suspend fun installPackage(id: Int, packageName: String, stream: InputStream) {
@@ -103,11 +130,16 @@ class SessionInstaller(
         streams: List<InputStream>
     ): Boolean = installNewMutex.withLock {
         Log.i("InstallViewModel", "installNew: start id=$id pkg=$packageName splits=${streams.size}")
-        val packageInstaller: PackageInstaller = context.packageManager.packageInstaller
+        val useShizuku = prefs.shizukuInstall.get()
+        val packageInstaller = if (useShizuku) createShizukuPackageInstaller() else context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         if (Build.VERSION.SDK_INT >= 24) params.setAppPackageName(packageName)
         if (Build.VERSION.SDK_INT >= 31) params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
         if (Build.VERSION.SDK_INT >= 33) params.setPackageSource(PackageInstaller.PACKAGE_SOURCE_STORE)
+        if (useShizuku) {
+            val hidden = Refine.unsafeCast<PackageInstallerHidden.SessionParamsHidden>(params)
+            hidden.installFlags = hidden.installFlags or PackageManagerHidden.INSTALL_REPLACE_EXISTING
+        }
 
         return@withLock suspendCancellableCoroutine { continuation ->
 
@@ -168,7 +200,7 @@ class SessionInstaller(
                 override fun onFinished(sessionId: Int, success: Boolean) {
                     Log.i("InstallViewModel", "installNew: sessionFinished sessionId=$sessionId success=$success id=$id pkg=$packageName")
                     packageInstaller.unregisterSessionCallback(this)
-                    runCatching { packageInstaller.openSession(sessionId).close() }.getOrNull()
+                    if (!useShizuku) runCatching { packageInstaller.openSession(sessionId).close() }.getOrNull()
                 }
             }
 
@@ -184,7 +216,15 @@ class SessionInstaller(
             val sessionId = packageInstaller.createSession(params)
             Log.i("InstallViewModel", "installNew: sessionId=$sessionId id=$id pkg=$packageName writing ${streams.size} stream(s)")
             var totalBytes = 0L
-            packageInstaller.openSession(sessionId).use { session ->
+            val session = if (useShizuku) {
+                val remote = IPackageInstallerSession.Stub.asInterface(
+                    shizukuPackageInstaller.openSession(sessionId).asShizukuBinder()
+                )
+                Refine.unsafeCast<PackageInstaller.Session>(PackageInstallerHidden.SessionHidden(remote))
+            } else {
+                packageInstaller.openSession(sessionId)
+            }
+            session.use {
                 streams.forEach { stream ->
                     session.openWrite("$packageName.${randomUUID()}", 0, -1).use { output ->
                         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
@@ -204,6 +244,17 @@ class SessionInstaller(
                 val pending = PendingIntent.getBroadcast(context, sessionId, intent, FLAG_UPDATE_CURRENT or FLAG_MUTABLE)
                 session.commit(pending.intentSender)
             }
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.O)
+    private fun createShizukuPackageInstaller(): PackageInstaller {
+        check(ShizukuAccess.isReady()) { "Shizuku is unavailable or permission was denied" }
+        val userId = Process.myUid() / 100_000
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            Refine.unsafeCast(PackageInstallerHidden(shizukuPackageInstaller, PLAY_STORE_PACKAGE, null, userId))
+        } else {
+            Refine.unsafeCast(PackageInstallerHidden(shizukuPackageInstaller, PLAY_STORE_PACKAGE, userId))
         }
     }
 
@@ -257,6 +308,12 @@ class SessionInstaller(
     fun finish() = installMutex.unlock()
 
     fun checkPermission(): Boolean {
+        if (prefs.shizukuInstall.get()) {
+            if (ShizukuAccess.isReady()) return true
+            Toast.makeText(context, R.string.shizuku_unavailable, Toast.LENGTH_LONG).show()
+            return false
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if(!context.packageManager.canRequestPackageInstalls()) {
                 val uri = "package:${BuildConfig.APPLICATION_ID}".toUri()
@@ -272,6 +329,16 @@ class SessionInstaller(
     @Suppress("BlockingMethodInNonBlockingContext")
     suspend fun installXapk(id: Int, packageName: String, stream: InputStream) = installPackage(id, packageName, stream)
 
+}
+
+internal object ShizukuAccess {
+    fun isServiceAvailable(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+        runCatching { Shizuku.pingBinder() }.getOrDefault(false)
+
+    fun hasPermission(): Boolean = isServiceAvailable() &&
+        runCatching { Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED }.getOrDefault(false)
+
+    fun isReady(): Boolean = hasPermission()
 }
 
 fun InputStream.copyToAndNotify(out: OutputStream, id: Int, installLog: InstallLog, total: Long, bufferSize: Int = DEFAULT_BUFFER_SIZE): Long {

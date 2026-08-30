@@ -6,6 +6,7 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("dev.rikka.tools.refine")
 }
 
 val signingProperties = Properties().apply {
@@ -52,8 +53,8 @@ android {
         applicationId = "com.apkupdater" + System.getenv("BUILD_TAG").orEmpty()
         minSdk = 23
         targetSdk = 36
-        versionCode = if (buildNumber.isEmpty()) 69 else buildNumber.toInt()
-        versionName = if (buildNumber.isEmpty()) "3.1.10" else "0.0.$buildNumber"
+        versionCode = if (buildNumber.isEmpty()) 70 else buildNumber.toInt()
+        versionName = if (buildNumber.isEmpty()) "3.1.11" else "0.0.$buildNumber"
         buildConfigField("boolean", "SENSITIVE_LOGGING", sensitiveLogging.toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -119,6 +120,11 @@ dependencies {
     implementation("com.github.rumboalla.KryptoPrefs:kryptoprefs:0.4.3")
     implementation("com.github.topjohnwu.libsu:core:6.0.0")
     implementation("com.auroraoss:gplayapi:3.5.8")
+    compileOnly("dev.rikka.hidden:stub:4.4.0")
+    implementation("dev.rikka.tools.refine:runtime:4.4.0")
+    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation("dev.rikka.shizuku:provider:13.1.5")
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
     implementation("com.google.code.gson:gson:2.13.2")
     implementation("com.squareup.okhttp3:logging-interceptor:5.3.2")
     implementation("com.squareup.retrofit2:converter-gson:3.0.0")

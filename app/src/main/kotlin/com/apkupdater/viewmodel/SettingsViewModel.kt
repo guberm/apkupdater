@@ -2,6 +2,7 @@ package com.apkupdater.viewmodel
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.core.content.FileProvider
 import com.apkupdater.BuildConfig
@@ -17,6 +18,7 @@ import com.apkupdater.ui.theme.isDarkTheme
 import com.apkupdater.util.Clipboard
 import com.apkupdater.util.Downloader
 import com.apkupdater.util.SnackBar
+import com.apkupdater.util.ShizukuAccess
 import com.apkupdater.util.Stringer
 import com.apkupdater.util.Themer
 import com.apkupdater.util.UpdatesNotification
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import rikka.shizuku.Shizuku
 import java.io.File
 
 
@@ -45,12 +48,63 @@ class SettingsViewModel(
 	private val downloader: Downloader,
 	private val snackBar: SnackBar,
 	private val stringer: Stringer
-) : ViewModel() {
+) : ViewModel(), Shizuku.OnRequestPermissionResultListener {
+
+	companion object {
+		private const val SHIZUKU_PERMISSION_REQUEST = 9000
+	}
 
 	val state = MutableStateFlow<SettingsUiState>(SettingsUiState.Settings)
+	val shizukuInstall = MutableStateFlow(prefs.shizukuInstall.get())
+
+	init {
+		Shizuku.addRequestPermissionResultListener(this)
+	}
 
 	fun getNewInstaller() = prefs.newInstaller.get()
 	fun setNewInstaller(b: Boolean) = prefs.newInstaller.put(b)
+	fun setShizukuInstall(enabled: Boolean) {
+		if (!enabled) {
+			prefs.shizukuInstall.put(false)
+			shizukuInstall.value = false
+			return
+		}
+
+		if (!ShizukuAccess.isServiceAvailable()) {
+			showShizukuUnavailable()
+			return
+		}
+
+		if (ShizukuAccess.hasPermission()) {
+			enableShizukuInstall()
+		} else {
+			runCatching { Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST) }
+				.onFailure { showShizukuUnavailable() }
+		}
+	}
+
+	override fun onRequestPermissionResult(requestCode: Int, grantResult: Int) {
+		if (requestCode != SHIZUKU_PERMISSION_REQUEST) return
+		if (grantResult == PackageManager.PERMISSION_GRANTED) {
+			enableShizukuInstall()
+		} else {
+			showShizukuUnavailable()
+		}
+	}
+
+	private fun enableShizukuInstall() {
+		prefs.shizukuInstall.put(true)
+		shizukuInstall.value = true
+	}
+
+	private fun showShizukuUnavailable() {
+		snackBar.snackBar(viewModelScope, TextSnack(stringer.get(R.string.shizuku_unavailable)))
+	}
+
+	override fun onCleared() {
+		Shizuku.removeRequestPermissionResultListener(this)
+		super.onCleared()
+	}
 	fun setPlayTextAnimations(b: Boolean) = prefs.playTextAnimations.put(b)
 	fun getPlayTextAnimations() = prefs.playTextAnimations.get()
 	fun setIgnoreAlpha(b: Boolean) = prefs.ignoreAlpha.put(b)

@@ -33,6 +33,7 @@ class Prefs(
 	val alarmHour = int("alarmHour", defValue = 12, backed = true)
 	val alarmFrequency = int("alarmFrequency", 0, backed = true)
 	val rootInstall = boolean("rootInstall", defValue = false, backed = true)
+	val shizukuInstall = boolean("shizukuInstall", defValue = false, backed = true)
 	val theme = int("theme", defValue = 0, backed = true)
 	val lastTab = string("lastTab", defValue = Screen.Updates.route, backed = true)
 	val playAuthData = json("playAuthData", AuthData("", ""), true)
