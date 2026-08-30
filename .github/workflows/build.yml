@@ -82,6 +82,7 @@ jobs:
           ./app/build/outputs/apk/release/com.apkupdater-sensitive-logging-release.apk
         body: |
           - Improve Google Play download recovery by trying up to five anonymous accounts when delivery is rate-limited.
+          - Retry temporary Aurora authentication server errors without retrying authentication rate limits.
           - Keep retries bounded and reuse the first working account for later downloads.
           - Installer metadata does not grant Google Play account ownership, licensing, or Play Integrity entitlement.
           - The sensitive-logging APK includes full Play request URLs and auth/cookie headers for manual debugging. Do not share its logs.

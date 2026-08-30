@@ -37,7 +37,9 @@ class PlayRepository(
     private fun refreshAuth(): AuthData {
         Log.i("PlayRepository", "Refreshing token.")
         val properties = NativeDeviceInfoProvider(context).getNativeDeviceProperties()
-        val playResponse = playHttpClient.postAuth(AUTH_URL, gson.toJson(properties).toByteArray())
+        val playResponse = retryTransientPlayAuth(responseCode = { it.code }) {
+            playHttpClient.postAuth(AUTH_URL, gson.toJson(properties).toByteArray())
+        }
         if (playResponse.isSuccessful) {
             val authData = gson.fromJson(String(playResponse.responseBytes), AuthData::class.java)
             prefs.playAuthData.put(authData)
@@ -158,6 +160,20 @@ internal fun purchasePlayFiles(
 internal fun invalidPlayFileUrls(urls: List<String>) = urls.isEmpty() || urls.any(String::isBlank)
 
 internal fun playAuthRefreshes(responseCode: Int) = if (responseCode == 429) 4 else 1
+
+internal fun <T> retryTransientPlayAuth(
+    responseCode: (T) -> Int,
+    sleep: (Long) -> Unit = { Thread.sleep(it) },
+    request: () -> T
+): T {
+    var response = request()
+    for (delay in longArrayOf(1_000L, 2_000L)) {
+        if (responseCode(response) !in 500..599) return response
+        sleep(delay)
+        response = request()
+    }
+    return response
+}
 
 internal fun <T> retryAfterRefresh(
     action: () -> T,
