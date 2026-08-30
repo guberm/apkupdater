@@ -34,8 +34,3 @@ This project is a modified fork of [rumboalla/APKUpdater](https://github.com/rum
 
 Release builds require signing values from `APKUPDATER_*` environment variables, `local.properties`, or `~/.android/apkupdater-signing.properties`. The build fails when release signing is not configured.
 
-## License
-
-Copyright © 2016–2024 rumboalla.
-
-Licensed under the [GNU General Public License v3](LICENSE).
