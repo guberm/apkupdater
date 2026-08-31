@@ -205,27 +205,14 @@ class UpdatesViewModel(
 		}
 	}
 
-	private fun List<AppUpdate>.filterIgnoredVersions(ignoredVersions: List<Int>) = this
-		.filter { !ignoredVersions.contains(it.id) }
-
-	private fun List<AppUpdate>.filterSameVersion() = if (prefs.ignoreSameVersion.get()) {
-		filter { it.version != it.oldVersion }
-	} else this
-
-	private fun List<AppUpdate>.filterIgnoredReleaseLabels() = filter {
-		shouldKeepUpdateForIgnoredReleaseLabels(
-			version = it.version,
-			ignoreAlpha = prefs.ignoreAlpha.get(),
-			ignoreBeta = prefs.ignoreBeta.get()
-		)
-	}
-
-	private fun setSuccess(updates: List<AppUpdate>) = updates
-		.let { prepareUpdates(it) }
-		.filterIgnoredVersions(prefs.ignoredVersions.get())
-		.filter { shouldKeepUpdateForIgnoredUpdates(it, prefs.ignoredUpdates.get().toSet()) }
-		.filterSameVersion()
-		.filterIgnoredReleaseLabels()
+	private fun setSuccess(updates: List<AppUpdate>) = filterVisibleUpdates(
+		updates = updates,
+		ignoredVersions = prefs.ignoredVersions.get().toSet(),
+		ignoredUpdates = prefs.ignoredUpdates.get().toSet(),
+		ignoreSameVersion = prefs.ignoreSameVersion.get(),
+		ignoreAlpha = prefs.ignoreAlpha.get(),
+		ignoreBeta = prefs.ignoreBeta.get()
+	)
 		.let {
 			state.value = UpdatesUiState.Success(it)
 			badger.changeUpdatesBadge(it.distinctBy(AppUpdate::packageName).size.toString())
@@ -255,6 +242,25 @@ internal fun prepareUpdates(
 		.values
 		.map { alternatives -> alternatives.maxBy { it.versionCode } }
 }
+
+internal fun filterVisibleUpdates(
+	updates: List<AppUpdate>,
+	ignoredVersions: Set<Int>,
+	ignoredUpdates: Set<String>,
+	ignoreSameVersion: Boolean,
+	ignoreAlpha: Boolean,
+	ignoreBeta: Boolean
+) = prepareUpdates(updates)
+	.filter { it.id !in ignoredVersions }
+	.filter { shouldKeepUpdateForIgnoredUpdates(it, ignoredUpdates) }
+	.filter { !ignoreSameVersion || it.version != it.oldVersion }
+	.filter {
+		shouldKeepUpdateForIgnoredReleaseLabels(
+			version = it.version,
+			ignoreAlpha = ignoreAlpha,
+			ignoreBeta = ignoreBeta
+		)
+	}
 
 internal fun shouldKeepUpdateForIgnoredReleaseLabels(
 	version: String,

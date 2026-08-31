@@ -5,6 +5,7 @@ import android.util.Log
 import com.apkupdater.data.ui.AppUpdate
 import com.apkupdater.data.ui.GitHubSource
 import com.apkupdater.data.ui.PlaySource
+import com.apkupdater.viewmodel.filterVisibleUpdates
 import com.apkupdater.viewmodel.prepareUpdates
 import com.apkupdater.viewmodel.shouldKeepUpdateForIgnoredUpdates
 import com.apkupdater.viewmodel.ignoreAppSourceKey
@@ -12,6 +13,7 @@ import com.apkupdater.viewmodel.ignoreVersionKey
 import com.apkupdater.viewmodel.ignoreVersionSourceKey
 import com.apkupdater.util.Downloader
 import com.apkupdater.util.readAppLogs
+import com.apkupdater.worker.updateAppCount
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 
@@ -90,6 +92,22 @@ class ExampleInstrumentedTest {
         assertFalse(shouldKeepUpdateForIgnoredUpdates(play, ignored))
         assertFalse(shouldKeepUpdateForIgnoredUpdates(github, ignored))
         assertTrue(shouldKeepUpdateForIgnoredUpdates(play.copy(versionCode = 11), ignored))
+    }
+
+    @Test
+    fun notificationCountsUniqueAppsAfterIgnoreFilters() {
+        val appA = update("app.a", 10)
+        val ignored = update("app.ignored", 10)
+        val visible = filterVisibleUpdates(
+            updates = listOf(appA, appA.copy(source = GitHubSource), update("app.b", 10), ignored),
+            ignoredVersions = emptySet(),
+            ignoredUpdates = setOf(ignoreAppSourceKey(ignored)),
+            ignoreSameVersion = false,
+            ignoreAlpha = false,
+            ignoreBeta = false
+        )
+
+        assertEquals(2, updateAppCount(visible.map(AppUpdate::packageName)))
     }
 
     @Test

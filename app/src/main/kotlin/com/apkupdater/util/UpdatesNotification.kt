@@ -28,6 +28,8 @@ class UpdatesNotification(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     fun showUpdateNotification(num: Int) {
+        if (num == 0) return NotificationManagerCompat.from(context).cancel(updateId)
+
         // Intent for the notification click
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT

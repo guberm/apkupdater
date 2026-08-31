@@ -9,6 +9,7 @@ import androidx.work.WorkerParameters
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.repository.UpdatesRepository
 import com.apkupdater.util.UpdatesNotification
+import com.apkupdater.viewmodel.filterVisibleUpdates
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.util.concurrent.TimeUnit
@@ -18,6 +19,8 @@ private val REFRESH_INTERVAL_MINUTES = listOf(15L, 30L, 60L, 120L, 180L, 360L, 7
 
 internal fun refreshIntervalMinutes(option: Int) =
     REFRESH_INTERVAL_MINUTES.getOrElse(option) { REFRESH_INTERVAL_MINUTES.last() }
+
+internal fun updateAppCount(packageNames: List<String>) = packageNames.distinct().size
 
 
 class UpdatesWorker(
@@ -56,9 +59,15 @@ class UpdatesWorker(
 
     override suspend fun doWork(): Result {
         updatesRepository.updates().collect {
-            if (it.isNotEmpty()) {
-                notification.showUpdateNotification(it.size)
-            }
+            val visibleUpdates = filterVisibleUpdates(
+                updates = it,
+                ignoredVersions = prefs.ignoredVersions.get().toSet(),
+                ignoredUpdates = prefs.ignoredUpdates.get().toSet(),
+                ignoreSameVersion = prefs.ignoreSameVersion.get(),
+                ignoreAlpha = prefs.ignoreAlpha.get(),
+                ignoreBeta = prefs.ignoreBeta.get()
+            )
+            notification.showUpdateNotification(updateAppCount(visibleUpdates.map { update -> update.packageName }))
         }
         return Result.success()
     }

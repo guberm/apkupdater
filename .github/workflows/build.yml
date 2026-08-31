@@ -87,9 +87,9 @@ jobs:
           ./app/build/outputs/apk/release/com.guberdev.apkupdater-release.apk
           ./app/build/outputs/apk/release/com.guberdev.apkupdater-sensitive-logging-release.apk
         body: |
-          - Replace Alarm settings with working auto-refresh and update notifications.
-          - Choose a refresh interval: 15 or 30 minutes, or 1, 2, 3, 6, 12, or 24 hours.
-          - Rename the app to APK Updater and add a new adaptive launcher icon.
+          - Count updates by unique apps instead of duplicate results from multiple sources.
+          - Exclude ignored apps, versions, and release labels from the notification count.
+          - Remove stale update notifications when no visible updates remain.
           - The sensitive-logging APK includes full Play request URLs and auth/cookie headers for manual debugging. Do not share its logs.
           - Both APKs use the same package, version, and signing certificate.
         prerelease: false

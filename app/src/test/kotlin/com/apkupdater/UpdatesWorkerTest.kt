@@ -1,6 +1,7 @@
 package com.apkupdater
 
 import com.apkupdater.worker.refreshIntervalMinutes
+import com.apkupdater.worker.updateAppCount
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -16,5 +17,10 @@ class UpdatesWorkerTest {
     fun fallsBackToDailyForInvalidSavedValue() {
         assertEquals(1_440L, refreshIntervalMinutes(-1))
         assertEquals(1_440L, refreshIntervalMinutes(8))
+    }
+
+    @Test
+    fun notificationCountsEachVisibleAppOnce() {
+        assertEquals(2, updateAppCount(listOf("app.a", "app.a", "app.b")))
     }
 }
