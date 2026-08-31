@@ -9,11 +9,15 @@ import androidx.work.WorkerParameters
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.repository.UpdatesRepository
 import com.apkupdater.util.UpdatesNotification
-import com.apkupdater.util.millisUntilHour
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.util.concurrent.TimeUnit
-import kotlin.random.Random
+
+
+private val REFRESH_INTERVAL_MINUTES = listOf(15L, 30L, 60L, 120L, 180L, 360L, 720L, 1_440L)
+
+internal fun refreshIntervalMinutes(option: Int) =
+    REFRESH_INTERVAL_MINUTES.getOrElse(option) { REFRESH_INTERVAL_MINUTES.last() }
 
 
 class UpdatesWorker(
@@ -22,30 +26,28 @@ class UpdatesWorker(
 ): CoroutineWorker(context, workerParams), KoinComponent {
 
     companion object: KoinComponent {
-        private const val TAG = "UpdatesWorker"
+        private const val WORK_NAME = "AutoRefreshWorker"
+        private const val LEGACY_WORK_NAME = "UpdatesWorker"
         private val prefs: Prefs by inject()
 
-        fun cancel(workManager: WorkManager) = workManager.cancelUniqueWork(TAG)
-
-        fun launch(workManager: WorkManager) {
-            val request = PeriodicWorkRequestBuilder<UpdatesWorker>(getDays(), TimeUnit.DAYS)
-                .setInitialDelay(
-                    millisUntilHour(prefs.alarmHour.get()) + randomDelay(),
-                    TimeUnit.MILLISECONDS
-                ).build()
-            workManager.enqueueUniquePeriodicWork(TAG, ExistingPeriodicWorkPolicy.UPDATE, request)
+        fun cancel(workManager: WorkManager) {
+            workManager.cancelUniqueWork(WORK_NAME)
+            workManager.cancelUniqueWork(LEGACY_WORK_NAME)
         }
 
-        private fun randomDelay() = if (prefs.useApkMirror.get())
-            Random.nextLong(0, 59 * 60 * 1_000)
-        else
-            Random.nextLong(-5 * 60 * 1_000, 5 * 60 * 1_000)
+        fun schedule(
+            workManager: WorkManager,
+            enabled: Boolean,
+            policy: ExistingPeriodicWorkPolicy = ExistingPeriodicWorkPolicy.UPDATE
+        ) {
+            if (!enabled) return cancel(workManager)
 
-        private fun getDays() = when(prefs.alarmFrequency.get()) {
-            0 -> 1L
-            1 -> 3L
-            2 -> 7L
-            else -> 1L
+            workManager.cancelUniqueWork(LEGACY_WORK_NAME)
+            val request = PeriodicWorkRequestBuilder<UpdatesWorker>(
+                refreshIntervalMinutes(prefs.refreshInterval.get()),
+                TimeUnit.MINUTES
+            ).build()
+            workManager.enqueueUniquePeriodicWork(WORK_NAME, policy, request)
         }
     }
 

@@ -24,13 +24,8 @@
     <string name="play_text_animations">播放文字动画</string>
     <string name="settings_sources">来源</string>
     <string name="settings_ui">用户界面</string>
-    <string name="settings_alarm">提醒</string>
     <string name="settings_options">选项</string>
     <string name="settings_utils">工具</string>
-    <string name="settings_hour">提醒小时</string>
-    <string name="settings_alarm_daily">每日</string>
-    <string name="settings_alarm_3day">3天</string>
-    <string name="settings_alarm_weekly">每周</string>
     <string name="ignore_alpha">忽略Alpha版本</string>
     <string name="ignore_beta">忽略Beta版本</string>
     <string name="ignore_preRelease">忽略预发布版本</string>

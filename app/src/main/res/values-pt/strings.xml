@@ -1,6 +1,6 @@
 <resources>
 
-    <string name="app_name" translatable="false">APKUpdater</string>
+    <string name="app_name" translatable="false">APK Updater</string>
     <string name="tab_apps">"Aplicações"</string>
     <string name="tab_search">"Procurar"</string>
     <string name="tab_updates">"Atualizações"</string>
@@ -24,12 +24,7 @@
     // Settings
     <string name="settings_sources">"Fontes"</string>
     <string name="settings_ui">"Interface"</string>
-    <string name="settings_alarm">"Alarme"</string>
     <string name="settings_options">"Opções"</string>
-    <string name="settings_hour">"Intervalo de horas"</string>
-    <string name="settings_alarm_daily">"Diário"</string>
-    <string name="settings_alarm_3day">"A cada 3 dias"</string>
-    <string name="settings_alarm_weekly">"Semanalmente"</string>
     <string name="ignore_alpha">"Ignorar alpha"</string>
     <string name="ignore_beta">"Ignorar beta"</string>
     <string name="ignore_preRelease">"Ignorar pré-lançamento"</string>

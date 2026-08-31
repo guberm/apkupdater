@@ -1,6 +1,6 @@
 <resources>
 
-    <string name="app_name" translatable="false">APKUpdater</string>
+    <string name="app_name" translatable="false">APK Updater</string>
     <string name="tab_apps">செயலிகள்</string>
     <string name="tab_search">தேடல்</string>
     <string name="tab_updates">புதுப்பிப்புகள்</string>
@@ -26,13 +26,8 @@
     <string name="play_text_animations">எழுத்து அனிமேஷன்களை இயக்கவும்</string>
     <string name="settings_sources">மூலங்கள்</string>
     <string name="settings_ui">பயனர் இடைமுகம்</string>
-    <string name="settings_alarm">அலறி</string>
     <string name="settings_options">விருப்பங்கள்</string>
     <string name="settings_utils">உபயோகங்கள்</string>
-    <string name="settings_hour">அலறி மணி</string>
-    <string name="settings_alarm_daily">தினசரி</string>
-    <string name="settings_alarm_3day">3-நாட்கள்</string>
-    <string name="settings_alarm_weekly">வாரந்தோறும்</string>
     <string name="ignore_alpha">ஆல்ஃபா வெளியீட்டைப் விளக்கவும்</string>
     <string name="ignore_beta">பீட்டா வெளியீட்டைப் விளக்கவும்</string>
     <string name="ignore_preRelease">முன் வெளியீட்டைப் விளக்கவும்</string>

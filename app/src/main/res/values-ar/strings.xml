@@ -1,6 +1,6 @@
 <resources>
 
-    <string name="app_name" translatable="false">APKUpdater</string>
+    <string name="app_name" translatable="false">APK Updater</string>
     <string name="tab_apps">التطبيقات</string>
     <string name="tab_search">البحث</string>
     <string name="tab_updates">التحديثات</string>
@@ -26,13 +26,8 @@
     <string name="play_text_animations">تشغيل الرسوم المتحركة النصية</string>
     <string name="settings_sources">المصادر</string>
     <string name="settings_ui">الواجهة</string>
-    <string name="settings_alarm">تنبيه</string>
     <string name="settings_options">خيارات</string>
     <string name="settings_utils">خدمات</string>
-    <string name="settings_hour">ساعة المنبه</string>
-    <string name="settings_alarm_daily">يومياً</string>
-    <string name="settings_alarm_3day">3 أيام</string>
-    <string name="settings_alarm_weekly">أسبوعياً</string>
     <string name="ignore_alpha">تجاهل الإصدارات الألفا</string>
     <string name="ignore_beta">تجاهل الإصدارات التجريبية</string>
     <string name="ignore_preRelease">تجاهل الإصدارات المسبقة</string>

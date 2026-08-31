@@ -1,6 +1,6 @@
 <resources>
 
-    <string name="app_name" translatable="false">APKUpdater</string>
+    <string name="app_name" translatable="false">APK Updater</string>
     <string name="tab_apps">應用程式</string>
     <string name="tab_search">搜尋</string>
     <string name="tab_updates">更新</string>
@@ -26,13 +26,8 @@
     <string name="play_text_animations">播放文字動畫</string>
     <string name="settings_sources">來源</string>
     <string name="settings_ui">使用者介面</string>
-    <string name="settings_alarm">鬧鐘</string>
     <string name="settings_options">選項</string>
     <string name="settings_utils">工具</string>
-    <string name="settings_hour">鬧鐘時間</string>
-    <string name="settings_alarm_daily">每日</string>
-    <string name="settings_alarm_3day">每三天</string>
-    <string name="settings_alarm_weekly">每週</string>
     <string name="ignore_alpha">忽略 Alpha 版</string>
     <string name="ignore_beta">忽略 Beta 版</string>
     <string name="ignore_preRelease">忽略預發布版</string>

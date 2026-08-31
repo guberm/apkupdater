@@ -1,6 +1,6 @@
 <resources>
 
-    <string name="app_name" translatable="false">APKUpdater</string>
+    <string name="app_name" translatable="false">APK Updater</string>
     <string name="tab_apps">Appok</string>
     <string name="tab_search">Keresés</string>
     <string name="tab_updates">Frissítések</string>
@@ -26,13 +26,8 @@
     <string name="play_text_animations">Szöveg animációk lejátszása</string>
     <string name="settings_sources">Források</string>
     <string name="settings_ui">Felület</string>
-    <string name="settings_alarm">Riasztás</string>
     <string name="settings_options">Lehetőségek</string>
     <string name="settings_utils">Hasznos</string>
-    <string name="settings_hour">Ébresztőóra</string>
-    <string name="settings_alarm_daily">Naponta</string>
-    <string name="settings_alarm_3day">3 naponta</string>
-    <string name="settings_alarm_weekly">Hetente</string>
     <string name="ignore_alpha">Alpha kizárása</string>
     <string name="ignore_beta">Beta kizárása</string>
     <string name="ignore_preRelease">Pre-release kizárása</string>

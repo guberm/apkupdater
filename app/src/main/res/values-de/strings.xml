@@ -26,13 +26,8 @@
     <string name="play_text_animations">Textanimation verwenden</string>
     <string name="settings_sources">Quellen</string>
     <string name="settings_ui">Benutzeroberfläche</string>
-    <string name="settings_alarm">Alarm</string>
     <string name="settings_options">Optionen</string>
     <string name="settings_utils">Hilfsmittel</string>
-    <string name="settings_hour">Alarmzeit</string>
-    <string name="settings_alarm_daily">Täglich</string>
-    <string name="settings_alarm_3day">3-Tägig</string>
-    <string name="settings_alarm_weekly">Wöchentlich</string>
     <string name="ignore_alpha">Alphas ignorieren</string>
     <string name="ignore_beta">Betas ignorieren</string>
     <string name="ignore_preRelease">Pre-Releases ignorieren</string>

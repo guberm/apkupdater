@@ -1,6 +1,6 @@
 <resources>
 
-    <string name="app_name" translatable="false">APKUpdater</string>
+    <string name="app_name" translatable="false">APK Updater</string>
     <string name="tab_apps">Aplikacionet</string>
     <string name="tab_search">Kërko</string>
     <string name="tab_updates">Përditësime</string>
@@ -24,13 +24,8 @@
     // Settings
     <string name="settings_sources">Burimet</string>
     <string name="settings_ui">UI</string>
-    <string name="settings_alarm">Alarmi</string>
     <string name="settings_options">Opsionet</string>
     <string name="settings_utils">Utilitetet</string>
-    <string name="settings_hour">Ora e Alarmit</string>
-    <string name="settings_alarm_daily">Çdo Ditë</string>
-    <string name="settings_alarm_3day">Çdo 3 Ditë</string>
-    <string name="settings_alarm_weekly">Çdo Javë</string>
     <string name="ignore_alpha">Ignoro Alpha</string>
     <string name="ignore_beta">Ignoro Beta</string>
     <string name="ignore_preRelease">Ignoro Para-lirim</string>

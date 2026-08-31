@@ -90,7 +90,7 @@ fun About() = LazyColumn(
 	}
 	item {
 		AboutItem(
-			"GitHub - APKUpdater",
+			"GitHub - APK Updater",
 			stringResource(R.string.about_github),
 			"https://github.com/guberm/apkupdater",
 			{ SourceIcon(GitHubSource, Modifier.size(64.dp).align(CenterVertically)) }
@@ -265,30 +265,29 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 
 	item {
 		val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-		LargeTitle(stringResource(R.string.settings_alarm), Modifier.padding(start = 16.dp, top = 16.dp))
+		LargeTitle(stringResource(R.string.settings_autorefresh), Modifier.padding(start = 16.dp, top = 16.dp))
 		SwitchSetting(
-			getValue = { viewModel.getEnableAlarm() },
-			setValue = { viewModel.setEnableAlarm(it, launcher) },
-			text = stringResource(R.string.settings_alarm),
+			getValue = { viewModel.getAutoRefreshEnabled() },
+			setValue = { viewModel.setAutoRefreshEnabled(it, launcher) },
+			text = stringResource(R.string.settings_autorefresh_enable),
 			icon = R.drawable.ic_alarm
 		)
 		DropDownSetting(
-			text = stringResource(R.string.settings_hour),
-			options = (0..23).map { it.toString() },
-			getValue = { viewModel.getAlarmHour() },
-			setValue = { viewModel.setAlarmHour(it) },
-			icon = R.drawable.ic_hour
-		)
-		SegmentedButtonSetting(
-			stringResource(R.string.frequency),
-			listOf(
-				stringResource(R.string.settings_alarm_daily),
-				stringResource(R.string.settings_alarm_3day),
-				stringResource(R.string.settings_alarm_weekly)
+			text = stringResource(R.string.settings_autorefresh_interval),
+			options = listOf(
+				stringResource(R.string.settings_interval_15_minutes),
+				stringResource(R.string.settings_interval_30_minutes),
+				stringResource(R.string.settings_interval_1_hour),
+				stringResource(R.string.settings_interval_2_hours),
+				stringResource(R.string.settings_interval_3_hours),
+				stringResource(R.string.settings_interval_6_hours),
+				stringResource(R.string.settings_interval_12_hours),
+				stringResource(R.string.settings_interval_24_hours)
 			),
-			{ viewModel.getAlarmFrequency() },
-			{ viewModel.setAlarmFrequency(it) },
-			R.drawable.ic_frequency
+			getValue = { viewModel.getRefreshInterval() },
+			setValue = { viewModel.setRefreshInterval(it) },
+			icon = R.drawable.ic_frequency,
+			width = 180
 		)
 	}
 	item {

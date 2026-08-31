@@ -82,13 +82,14 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/') || inputs.release_tag != ''
       with:
         tag_name: ${{ inputs.release_tag || github.ref_name }}
-        name: APKUpdater ${{ inputs.release_tag || github.ref_name }}
+        name: APK Updater ${{ inputs.release_tag || github.ref_name }}
         files: |
           ./app/build/outputs/apk/release/com.guberdev.apkupdater-release.apk
           ./app/build/outputs/apk/release/com.guberdev.apkupdater-sensitive-logging-release.apk
         body: |
-          - Change the Android application ID to `com.guberdev.apkupdater`; this installs separately from `com.apkupdater` and does not migrate its data.
-          - Retry Google Play delivery HTTP 429 failures with bounded authentication refreshes.
+          - Replace Alarm settings with working auto-refresh and update notifications.
+          - Choose a refresh interval: 15 or 30 minutes, or 1, 2, 3, 6, 12, or 24 hours.
+          - Rename the app to APK Updater and add a new adaptive launcher icon.
           - The sensitive-logging APK includes full Play request URLs and auth/cookie headers for manual debugging. Do not share its logs.
           - Both APKs use the same package, version, and signing certificate.
         prerelease: false

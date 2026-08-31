@@ -1,6 +1,6 @@
 <resources>
 
-    <string name="app_name" translatable="false">APKUpdater</string>
+    <string name="app_name" translatable="false">APK Updater</string>
     <string name="tab_apps">ישומים</string>
     <string name="tab_search">חיפוש</string>
     <string name="tab_updates">עדכונים</string>
@@ -24,13 +24,8 @@
     // Settings
     <string name="settings_sources">מקורות</string>
     <string name="settings_ui">ממשק משתמש</string>
-    <string name="settings_alarm">התרעה</string>
     <string name="settings_options">אפשרויות</string>
     <string name="settings_utils">כלים</string>
-    <string name="settings_hour">שעת התרעה</string>
-    <string name="settings_alarm_daily">יומי</string>
-    <string name="settings_alarm_3day">תלת-יומי</string>
-    <string name="settings_alarm_weekly">שבועי</string>
     <string name="ignore_alpha">התעלם מאלפא</string>
     <string name="ignore_beta">התעלם מביטא</string>
     <string name="ignore_preRelease">התעלם משחרור מוקדם</string>

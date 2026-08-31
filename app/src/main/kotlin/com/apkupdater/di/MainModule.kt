@@ -169,7 +169,7 @@ val mainModule = module {
 
 	single { SearchRepository(get(), get(named("main")), get(named("izzy")), get(), get(), get(), get(), get(), get()) }
 
-	single { KryptoBuilder.nocrypt(get(), androidContext().getString(R.string.app_name)) }
+	single { KryptoBuilder.nocrypt(get(), androidContext().getString(R.string.prefs_name)) }
 
 	single { Prefs(get()) }
 

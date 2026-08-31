@@ -131,10 +131,9 @@ class SettingsViewModel(
 	fun setUseApkPure(b: Boolean) = prefs.useApkPure.put(b)
 	fun getUsePlay() = prefs.usePlay.get()
 	fun setUsePlay(b: Boolean) = prefs.usePlay.put(b)
-	fun getEnableAlarm() = prefs.enableAlarm.get()
+	fun getAutoRefreshEnabled() = prefs.enableAlarm.get()
 	fun getRootInstall() = prefs.rootInstall.get()
-	fun getAlarmHour() = prefs.alarmHour.get()
-	fun getAlarmFrequency() = prefs.alarmFrequency.get()
+	fun getRefreshInterval() = prefs.refreshInterval.get()
 	fun getTheme() = prefs.theme.get()
 
 	fun setTheme(theme: Int) {
@@ -150,24 +149,15 @@ class SettingsViewModel(
 		}
 	}
 
-	fun setAlarmFrequency(frequency: Int) {
-		prefs.alarmFrequency.put(frequency)
-		if (getEnableAlarm()) UpdatesWorker.launch(workManager) else UpdatesWorker.cancel(workManager)
+	fun setRefreshInterval(interval: Int) {
+		prefs.refreshInterval.put(interval)
+		UpdatesWorker.schedule(workManager, getAutoRefreshEnabled())
 	}
 
-	fun setEnableAlarm(b: Boolean, launcher: ManagedActivityResultLauncher<String, Boolean>) {
+	fun setAutoRefreshEnabled(b: Boolean, launcher: ManagedActivityResultLauncher<String, Boolean>) {
 		prefs.enableAlarm.put(b)
-		if (b) {
-			notification.checkNotificationPermission(launcher)
-			UpdatesWorker.launch(workManager)
-		} else {
-			UpdatesWorker.cancel(workManager)
-		}
-	}
-
-	fun setAlarmHour(hour: Int) {
-		prefs.alarmHour.put(hour)
-		if (getEnableAlarm()) UpdatesWorker.launch(workManager) else UpdatesWorker.cancel(workManager)
+		if (b) notification.checkNotificationPermission(launcher)
+		UpdatesWorker.schedule(workManager, b)
 	}
 
 	fun setAbout() {
@@ -229,7 +219,7 @@ class SettingsViewModel(
 				)
 				Intent(Intent.ACTION_SEND).apply {
 					type = "text/plain"
-					putExtra(Intent.EXTRA_SUBJECT, "APKUpdater Logs")
+					putExtra(Intent.EXTRA_SUBJECT, "APK Updater Logs")
 					putExtra(Intent.EXTRA_STREAM, uri)
 					addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 				}

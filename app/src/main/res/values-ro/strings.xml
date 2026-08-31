@@ -1,6 +1,6 @@
 <resources>
 
-    <string name="app_name" translatable="false">APKUpdater</string>
+    <string name="app_name" translatable="false">APK Updater</string>
     <string name="tab_apps">Aplicații</string>
     <string name="tab_search">Caută</string>
     <string name="tab_updates">Actualizări</string>
@@ -21,12 +21,7 @@
     // Settings
     <string name="settings_sources">Surse</string>
     <string name="settings_ui">UI</string>
-    <string name="settings_alarm">Alarmă</string>
     <string name="settings_options">Opțiuni</string>
-    <string name="settings_hour">Ora Alarmei</string>
-    <string name="settings_alarm_daily">Zilnic</string>
-    <string name="settings_alarm_3day">În fiecare 3 zile</string>
-    <string name="settings_alarm_weekly">Săptămânal</string>
     <string name="ignore_alpha">Ignoră Aplicațiile Alpha</string>
     <string name="ignore_beta">Ignoră Aplicațiile Beta</string>
     <string name="root_install">Instalează Automat Folosind ROOT</string>

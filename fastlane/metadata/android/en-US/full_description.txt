@@ -1,4 +1,4 @@
-APKUpdater finds and installs updates for apps on Android devices from APKMirror, Aptoide, F-Droid, IzzyOnDroid, APKPure, GitLab, GitHub, and Google Play.
+APK Updater finds and installs updates for apps on Android devices from APKMirror, Aptoide, F-Droid, IzzyOnDroid, APKPure, GitLab, GitHub, and Google Play.
 
 This edition uses a single TV-style, D-pad-friendly interface on phones, tablets, Android TV, and Google TV.
 

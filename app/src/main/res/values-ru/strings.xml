@@ -1,6 +1,6 @@
 <resources>
 
-    <string name="app_name" translatable="false">APKUpdater</string>
+    <string name="app_name" translatable="false">APK Updater</string>
     <string name="tab_apps">Приложения</string>
     <string name="tab_search">Поиск</string>
     <string name="tab_updates">Обновления</string>
@@ -25,13 +25,8 @@
     <string name="play_text_animations">Проигрывать анимации текста</string>
     <string name="settings_sources">Источники</string>
     <string name="settings_ui">Интерфейс</string>
-    <string name="settings_alarm">Будильник</string>
     <string name="settings_options">Настройки</string>
     <string name="settings_utils">Утилиты</string>
-    <string name="settings_hour">Время звонка</string>
-    <string name="settings_alarm_daily">Ежедневно</string>
-    <string name="settings_alarm_3day">3 Дня</string>
-    <string name="settings_alarm_weekly">Еженедельно</string>
     <string name="ignore_alpha">Игнорировать alpha-версии</string>
     <string name="ignore_beta">Игнорировать beta-версии</string>
     <string name="ignore_preRelease">Игнорировать предрелизные версии</string>

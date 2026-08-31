@@ -1,6 +1,6 @@
 <resources>
 
-    <string name="app_name" translatable="false">APKUpdater</string>
+    <string name="app_name" translatable="false">APK Updater</string>
     <string name="tab_apps">アプリ</string>
     <string name="tab_search">検索</string>
     <string name="tab_updates">アップデート</string>
@@ -26,13 +26,8 @@
     <string name="play_text_animations">テキストのアニメーションを再生する</string>
     <string name="settings_sources">ソース</string>
     <string name="settings_ui">UI</string>
-    <string name="settings_alarm">アラーム</string>
     <string name="settings_options">オプション</string>
     <string name="settings_utils">ユーティリティ</string>
-    <string name="settings_hour">アラームを鳴らす時刻</string>
-    <string name="settings_alarm_daily">毎日</string>
-    <string name="settings_alarm_3day">3日ごと</string>
-    <string name="settings_alarm_weekly">毎週</string>
     <string name="ignore_alpha">アルファ版を無視する</string>
     <string name="ignore_beta">ベータ版を無視する</string>
     <string name="ignore_preRelease">プレリリースを無視する</string>

@@ -1,6 +1,6 @@
 <resources>
 
-    <string name="app_name" translatable="false">APKUpdater</string>
+    <string name="app_name" translatable="false">APK Updater</string>
     <string name="tab_apps">Aplikasi</string>
     <string name="tab_search">Mencari</string>
     <string name="tab_updates">Pembaruan</string>
@@ -26,13 +26,8 @@
     <string name="play_text_animations">Putar Animasi Teks</string>
     <string name="settings_sources">Sumber</string>
     <string name="settings_ui">UI</string>
-    <string name="settings_alarm">Alarm</string>
     <string name="settings_options">Pilihan</string>
     <string name="settings_utils">kegunaan</string>
-    <string name="settings_hour">Alarm Jam</string>
-    <string name="settings_alarm_daily">Daily</string>
-    <string name="settings_alarm_3day">3-Hari</string>
-    <string name="settings_alarm_weekly">Mingguan</string>
     <string name="ignore_alpha">abaikan Alpha</string>
     <string name="ignore_beta">abaikan Beta</string>
     <string name="ignore_preRelease">abaikan Pre-release</string>
