@@ -2,8 +2,10 @@ package com.apkupdater
 
 import com.apkupdater.repository.invalidPlayFileUrls
 import com.apkupdater.repository.playAuthRefreshes
+import com.apkupdater.repository.purchasePlayFiles
 import com.apkupdater.repository.retryAfterRefresh
 import com.apkupdater.repository.retryTransientPlayAuth
+import com.aurora.gplayapi.data.models.PlayFile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -56,6 +58,26 @@ class PlayPurchaseRetryTest {
             429,
             retryTransientPlayAuth<Int>(responseCode = { it }, sleep = {}, request = { 429 })
         )
+    }
+
+    @Test
+    fun retriesRateLimitedPlayDeliveryExceptions() {
+        var purchaseAttempts = 0
+        var authRefreshes = 0
+        val file = PlayFile(url = "https://example.com/base.apk")
+
+        val files = purchasePlayFiles(
+            purchase = {
+                purchaseAttempts++
+                if (purchaseAttempts < 3) error("rate limited") else listOf(file)
+            },
+            refreshAuth = { authRefreshes++ },
+            responseCode = { if (purchaseAttempts < 3) 429 else 200 }
+        )
+
+        assertEquals(listOf(file), files)
+        assertEquals(3, purchaseAttempts)
+        assertEquals(2, authRefreshes)
     }
 
 }

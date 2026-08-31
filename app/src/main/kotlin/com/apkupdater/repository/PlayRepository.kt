@@ -142,11 +142,16 @@ internal fun purchasePlayFiles(
     responseCode: () -> Int = { 200 }
 ): List<PlayFile> {
     val files = retryAfterRefresh(
-        action = purchase,
+        action = { runCatching(purchase) },
         refresh = refreshAuth,
-        shouldRetry = { invalidPlayFileUrls(it.map(PlayFile::url)) },
+        shouldRetry = { result ->
+            result.fold(
+                onSuccess = { invalidPlayFileUrls(it.map(PlayFile::url)) },
+                onFailure = { responseCode() == 429 }
+            )
+        },
         maxRefreshes = { playAuthRefreshes(responseCode()) }
-    )
+    ).getOrThrow()
     check(!invalidPlayFileUrls(files.map { it.url })) {
         if (responseCode() == 429) {
             "Google Play rate limit reached. Try again later."

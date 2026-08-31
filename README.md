@@ -24,7 +24,7 @@ This project is a modified fork of [rumboalla/APKUpdater](https://github.com/rum
 
 ## Download
 
-- [APKUpdater 3.1.14](https://github.com/guberm/apkupdater/releases/download/3.1.14/com.apkupdater-release.apk)
+- [APKUpdater 3.1.15](https://github.com/guberm/apkupdater/releases/download/3.1.15/com.guberdev.apkupdater-release.apk)
 
 ## Build
 

@@ -55,17 +55,17 @@ jobs:
         APKUPDATER_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
       run: |
         ./gradlew --no-daemon test lint assembleRelease
-        cp ./app/build/outputs/apk/release/com.apkupdater-release.apk "$RUNNER_TEMP/com.apkupdater-release.apk"
+        cp ./app/build/outputs/apk/release/com.guberdev.apkupdater-release.apk "$RUNNER_TEMP/com.guberdev.apkupdater-release.apk"
         ./gradlew --no-daemon clean -PsensitiveLogging=true assembleRelease
-        mv ./app/build/outputs/apk/release/com.apkupdater-release.apk ./app/build/outputs/apk/release/com.apkupdater-sensitive-logging-release.apk
-        cp "$RUNNER_TEMP/com.apkupdater-release.apk" ./app/build/outputs/apk/release/com.apkupdater-release.apk
+        mv ./app/build/outputs/apk/release/com.guberdev.apkupdater-release.apk ./app/build/outputs/apk/release/com.guberdev.apkupdater-sensitive-logging-release.apk
+        cp "$RUNNER_TEMP/com.guberdev.apkupdater-release.apk" ./app/build/outputs/apk/release/com.guberdev.apkupdater-release.apk
 
     - name: Verify release signature
       if: github.event_name != 'pull_request'
       run: |
         BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
-        STANDARD=./app/build/outputs/apk/release/com.apkupdater-release.apk
-        DIAGNOSTIC=./app/build/outputs/apk/release/com.apkupdater-sensitive-logging-release.apk
+        STANDARD=./app/build/outputs/apk/release/com.guberdev.apkupdater-release.apk
+        DIAGNOSTIC=./app/build/outputs/apk/release/com.guberdev.apkupdater-sensitive-logging-release.apk
         "$BUILD_TOOLS/apksigner" verify --print-certs "$STANDARD"
         "$BUILD_TOOLS/apksigner" verify --print-certs "$DIAGNOSTIC"
         STANDARD_CERT=$("$BUILD_TOOLS/apksigner" verify --print-certs "$STANDARD" | awk -F': ' '/certificate SHA-256 digest/{print $2; exit}')
@@ -84,13 +84,11 @@ jobs:
         tag_name: ${{ inputs.release_tag || github.ref_name }}
         name: APKUpdater ${{ inputs.release_tag || github.ref_name }}
         files: |
-          ./app/build/outputs/apk/release/com.apkupdater-release.apk
-          ./app/build/outputs/apk/release/com.apkupdater-sensitive-logging-release.apk
+          ./app/build/outputs/apk/release/com.guberdev.apkupdater-release.apk
+          ./app/build/outputs/apk/release/com.guberdev.apkupdater-sensitive-logging-release.apk
         body: |
-          - Upgrade Aurora GPlayApi to the version declared in app/build.gradle.kts.
-          - Remove the legacy Kotlin Android Extensions runtime pulled by KryptoPrefs to avoid duplicate Parcelize classes.
-          - Keep Google Play and Aurora retries bounded; external HTTP 429 rate limits are still respected and not retried.
-          - Installer metadata does not grant Google Play account ownership, licensing, or Play Integrity entitlement.
+          - Change the Android application ID to `com.guberdev.apkupdater`; this installs separately from `com.apkupdater` and does not migrate its data.
+          - Retry Google Play delivery HTTP 429 failures with bounded authentication refreshes.
           - The sensitive-logging APK includes full Play request URLs and auth/cookie headers for manual debugging. Do not share its logs.
           - Both APKs use the same package, version, and signing certificate.
         prerelease: false
