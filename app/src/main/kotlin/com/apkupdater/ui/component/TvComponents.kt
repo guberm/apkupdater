@@ -106,6 +106,7 @@ fun TvInstallButton(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                DownloadIcon(stringResource(R.string.install_cd), Modifier.size(20.dp))
                 downloadable.forEach { alt ->
                     SourceIcon(alt.source, Modifier.size(20.dp))
                 }
@@ -177,6 +178,21 @@ fun TvIgnoreVersionButton(
             )
         }
     }
+}
+
+@Composable
+private fun TvDownloadFromSourceButton(
+    update: AppUpdate,
+    onOpenSource: (AppUpdate) -> Unit
+) = ElevatedButton(
+    modifier = Modifier
+        .padding(bottom = 8.dp)
+        .widthIn(min = 64.dp),
+    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+    enabled = update.sourceUrl.isNotBlank(),
+    onClick = { onOpenSource(update) }
+) {
+    DownloadIcon(stringResource(R.string.download_from_source), Modifier.size(20.dp))
 }
 
 @Composable
@@ -275,6 +291,10 @@ fun TvUpdateItem(
             TvIgnoreVersionButton(app, alternatives, onIgnoreVersion, onIgnoreVersionFromSource)
             if (alternatives.any { it.link != Link.Empty }) {
                 TvInstallButton(app, alternatives, onInstall, onCancel)
+            } else {
+                alternatives.latestPerSource()
+                    .firstOrNull { it.sourceUrl.isNotBlank() }
+                    ?.let { TvDownloadFromSourceButton(it, onOpenSource) }
             }
         }
     }

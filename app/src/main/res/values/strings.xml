@@ -52,6 +52,7 @@
     <string name="include_disabled_apps">Include Disabled Apps</string>
     <string name="install_cd">Install App</string>
     <string name="install_all">Install All</string>
+    <string name="download_from_source">Open source download page</string>
     <string name="open_source">Source</string>
     <string name="open_source_failure">No browser is available to open this source.</string>
     <string name="app_cd">App Icon</string>
