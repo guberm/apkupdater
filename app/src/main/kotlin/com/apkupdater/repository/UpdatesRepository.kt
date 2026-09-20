@@ -3,6 +3,7 @@ package com.apkupdater.repository
 import android.util.Log
 import java.io.IOException
 import com.apkupdater.data.ui.AppUpdate
+import com.apkupdater.data.ui.AppInstalled
 import com.apkupdater.data.ui.CachedSourceResult
 import com.apkupdater.data.ui.FdroidRepo
 import com.apkupdater.data.ui.Source
@@ -29,9 +30,13 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.timeout
+import kotlinx.coroutines.flow.map
+import kotlin.time.Duration.Companion.seconds
 
 private const val CACHE_MAX_AGE_MILLIS = 7 * 24 * 60 * 60 * 1_000L
-private const val SOURCE_TIMEOUT_MILLIS = 30_000L
+private const val SOURCE_TIMEOUT_MILLIS = 120_000L
 
 class UpdatesRepository(
     private val appsRepository: AppsRepository,
@@ -51,20 +56,25 @@ class UpdatesRepository(
 
     private val refreshStatus = MutableStateFlow(UpdatesRefreshStatus())
     private val cacheLock = Any()
+    private val latestResults = java.util.concurrent.ConcurrentHashMap<String, List<AppUpdate>>()
 
     fun status(): StateFlow<UpdatesRefreshStatus> = refreshStatus.asStateFlow()
 
+    @OptIn(FlowPreview::class)
     fun updates(onlySources: Set<String>? = null): Flow<List<AppUpdate>> {
         val refreshId = System.currentTimeMillis()
         return flow {
             appsRepository.getApps().collect { result ->
                 result.onSuccess { apps ->
                     val filtered = apps.filter { !it.ignored }
+                    val installedPackages = filtered.map { it.packageName }.toSet()
                     val sources = mutableListOf<Flow<List<AppUpdate>>>()
                     refreshStatus.value = UpdatesRefreshStatus(isRefreshing = true, installedCount = filtered.size)
 
                     fun addSource(name: String, source: Flow<List<AppUpdate>>) {
                         val cached = readCachedSource(name)
+                        fun restored() = restoreCurrentUpdates(
+                            latestResults[name] ?: cached?.toAppUpdates(playRepository::cachedLink).orEmpty(), filtered)
                         if (onlySources != null && name !in onlySources) {
                             setSourceStatus(
                                 name,
@@ -72,13 +82,13 @@ class UpdatesRepository(
                                 cached?.updates?.size ?: 0,
                                 if (cached == null) "Not retried" else "Last successful result"
                             )
-                            sources += flowOf(cached?.toAppUpdates().orEmpty())
+                            sources += flowOf(restored())
                             return
                         }
 
                         setSourceStatus(name, SourceStatusState.Loading, 0)
                         var latest: List<AppUpdate>? = null
-                        val boundedSource = flow {
+                        val boundedSource = if (name == "APKCombo" || name == "Uptodown") source.timeout(90.seconds) else flow {
                             val completed = withTimeoutOrNull(SOURCE_TIMEOUT_MILLIS) {
                                 source.collect { emit(it) }
                                 true
@@ -86,17 +96,26 @@ class UpdatesRepository(
                             if (!completed) throw IOException("Source timed out after ${SOURCE_TIMEOUT_MILLIS / 1_000}s")
                         }
                         sources += boundedSource
-                            .onStart { setSourceStatus(name, SourceStatusState.Loading, 0) }
+                            .map { updates -> updates.filter { it.packageName in installedPackages } }
+                            .onStart {
+                                setSourceStatus(name, SourceStatusState.Loading, 0)
+                                emit(restored())
+                            }
                             .onEach {
                                 latest = it
-                                setSourceStatus(name, SourceStatusState.Success, it.size)
+                                setSourceStatus(name, SourceStatusState.Loading, it.size)
                             }
                             .onCompletion { cause ->
-                                if (cause == null) latest?.let { writeCachedSource(name, it) }
+                                if (cause == null) latest?.let {
+                                    writeCachedSource(name, it)
+                                    latestResults[name] = it
+                                    setSourceStatus(name, SourceStatusState.Success, it.size)
+                                }
                             }
                             .catch { error ->
-                                val fallback = readCachedSource(name)
-                                val available = fallback?.toAppUpdates() ?: latest.orEmpty()
+                                val available = (latest.orEmpty() + restored())
+                                    .distinctBy { it.packageName }
+                                latestResults[name] = available
                                 setSourceStatus(
                                     name,
                                     SourceStatusState.Failed,
@@ -194,6 +213,18 @@ class UpdatesRepository(
         prefs.cachedUpdateSources.put(
             prefs.cachedUpdateSources.get().filterNot { it.sourceName == name } + cached
         )
+    }
+}
+
+internal fun restoreCurrentUpdates(updates: List<AppUpdate>, installed: List<AppInstalled>): List<AppUpdate> {
+    val apps = installed.associateBy { it.packageName }
+    return updates.mapNotNull { update ->
+        val current = apps[update.packageName] ?: return@mapNotNull null
+        val version = if (update.source.name == "APKCombo") update.version.substringBefore('·').trim() else update.version
+        val newer = if (update.versionCode > 0) update.versionCode > current.versionCode
+            else isNewerScrapedVersion(version, current.version)
+        if (!newer || current.ignored) null
+        else update.copy(version = version, oldVersion = current.version, oldVersionCode = current.versionCode)
     }
 }
 

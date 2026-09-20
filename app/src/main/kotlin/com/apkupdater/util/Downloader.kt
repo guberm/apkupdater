@@ -215,12 +215,23 @@ class Downloader(
         null
     }
 
-    private fun resolveDownloadUrl(url: String) = runCatching {
+    private fun resolveDownloadUrl(url: String): ResolvedDownloadUrl {
+        val uri = java.net.URI(url)
+        if (uri.host.orEmpty().endsWith(".uptodown.com") && uri.path.endsWith("/android/download")) {
+            client.newCall(downloadRequest(url)).execute().use { response ->
+                if (!response.isSuccessful) throw IOException("Uptodown returned HTTP ${response.code}")
+                val details = com.apkupdater.repository.parseUptodownDetails(org.jsoup.Jsoup.parse(response.body.string(), url), url)
+                val direct = details?.downloadUrl ?: throw IOException("Uptodown did not provide a download link")
+                return ResolvedDownloadUrl(direct, url)
+            }
+        }
+        return runCatching {
         val resolverClient = if (ApkMirrorDownloadResolver.isApkMirrorUrl(url)) auroraClient else client
         ApkMirrorDownloadResolver.resolve(resolverClient, url)
     }.getOrElse {
         Log.e("Downloader", "resolveDownloadUrl: failed url=$url", it)
         ResolvedDownloadUrl(url)
+    }
     }
 
     private fun downloadClient(url: String) = when {

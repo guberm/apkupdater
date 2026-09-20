@@ -84,7 +84,7 @@ class SearchViewModel(
 
     override fun downloadAndRootInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
         state.value = SearchUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
-        downloadAndRootInstall(update.id, update.link)
+        downloadAndRootInstall(update.id, update.packageName, update.link)
     }
 
     override fun downloadAndInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {

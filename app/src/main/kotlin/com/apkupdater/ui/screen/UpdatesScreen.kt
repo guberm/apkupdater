@@ -179,7 +179,7 @@ fun UpdatesScreenSuccess(
 	val refreshStatus by viewModel.refreshStatus.collectAsStateWithLifecycle()
 
 	UpdatesTopBar(viewModel)
-	RefreshStatusPanel(viewModel)
+	RefreshStatusPanel(viewModel, displayedUpdates.size)
 	UpdatesFilterBar(viewModel, updates)
 
 	PullToRefreshBox(
@@ -199,9 +199,8 @@ fun UpdatesScreenSuccess(
 }
 
 @Composable
-private fun RefreshStatusPanel(viewModel: UpdatesViewModel) {
+private fun RefreshStatusPanel(viewModel: UpdatesViewModel, displayedCount: Int = 0) {
 	val status = viewModel.refreshStatus.collectAsStateWithLifecycle().value
-	val visibleUpdateCount = viewModel.visibleUpdateCount.collectAsStateWithLifecycle().value
 	if (!status.isRefreshing && status.sourceStatuses.isEmpty()) return
 
 	val failed = status.sourceStatuses.filter { it.state == SourceStatusState.Failed }
@@ -216,7 +215,7 @@ private fun RefreshStatusPanel(viewModel: UpdatesViewModel) {
 			R.string.refresh_status_summary,
 			checked,
 			status.enabledSourceCount,
-			visibleUpdateCount,
+			displayedCount,
 			status.updateCount
 		)
 	}

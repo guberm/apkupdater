@@ -124,6 +124,8 @@ class ApkMirrorRepository(
     }
 
     private fun filterAndroidTv(apk: AppExistsResponseApk): Boolean {
+        if (android.content.res.Resources.getSystem().configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_TYPE_MASK != android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) return true
         return apk.capabilities?.contains("leanback_standalone").orFalse()
                 || apk.capabilities?.contains("leanback").orFalse()
     }

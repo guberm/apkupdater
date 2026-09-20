@@ -23,7 +23,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
-import java.util.Scanner
 
 
 class GitHubRepository(
@@ -34,11 +33,9 @@ class GitHubRepository(
     suspend fun updates(apps: List<AppInstalled>) = flow {
         val checks = mutableListOf(selfCheck())
 
-        GitHubApps.forEachIndexed { i, app ->
-            if (i != 0) {
-                apps.find { it.packageName == app.packageName }?.let {
-                    checks.add(checkApp(apps, app.user, app.repo, app.packageName, it.version, app.extra))
-                }
+        GitHubApps.forEach { app ->
+            apps.find { it.packageName == app.packageName }?.let {
+                checks.add(checkApp(apps, app.user, app.repo, app.packageName, it.version, app.extra))
             }
         }
 
@@ -73,25 +70,27 @@ class GitHubRepository(
     }
 
     private fun selfCheck() = flow {
-        val release = service.getReleases()
+        if (BuildConfig.APPLICATION_ID != "com.guberdev.apkupdater") {
+            emit(emptyList())
+            return@flow
+        }
+        val release = service.getReleases("guberm", "apkupdater")
             .filter { filterPreRelease(it) }
-            .firstOrNull { findApkAsset(it.assets).isNotEmpty() }
+            .firstOrNull { release -> release.assets.any { it.browser_download_url.endsWith("/com.guberdev.apkupdater-release.apk") } }
         if (release == null) {
             emit(emptyList())
             return@flow
         }
-        val versions = getVersions(release.name)
-
-        if (versions.second > BuildConfig.VERSION_CODE.toLong()) {
+        if (Version(filterVersionTag(release.tag_name)) > Version(BuildConfig.VERSION_NAME)) {
             emit(listOf(AppUpdate(
                 name = "APKUpdater",
                 packageName = BuildConfig.APPLICATION_ID,
-                version = versions.first,
+                version = release.tag_name,
                 oldVersion = BuildConfig.VERSION_NAME,
-                versionCode = versions.second,
+                versionCode = 0L,
                 oldVersionCode = BuildConfig.VERSION_CODE.toLong(),
                 source = GitHubSource,
-                link = Link.Url(findApkAsset(release.assets)),
+                link = Link.Url(release.assets.first { it.browser_download_url.endsWith("/com.guberdev.apkupdater-release.apk") }.browser_download_url),
                 whatsNew = release.body,
                 sourceUrl = release.html_url
             )))
@@ -120,7 +119,7 @@ class GitHubRepository(
             r.filter { filterPreRelease(it) }.filter { findApkAsset(it.assets).isNotEmpty() }
         }
 
-        val release = releases.firstOrNull()
+        val release = releases.firstOrNull { findApkAssetArch(it.assets, extra).browser_download_url.isNotBlank() }
         if (release != null && Version(filterVersionTag(release.tag_name)) > Version(currentVersion)) {
             val app = apps?.getApp(packageName)
             val asset = findApkAssetArch(release.assets, extra)
@@ -148,13 +147,6 @@ class GitHubRepository(
         Log.e("GitHubRepository", "Error fetching releases for $packageName.", it)
         throw it
     }
-
-    private fun getVersions(name: String) = runCatching {
-        val scanner = Scanner(name)
-        val version = scanner.next()
-        val versionCode = scanner.next().trim('(', ')').toLong()
-        Pair(version, versionCode)
-    }.getOrDefault(Pair(name, 0L))
 
     private fun filterPreRelease(release: GitHubRelease) = when {
         prefs.ignorePreRelease.get() && release.prerelease -> false

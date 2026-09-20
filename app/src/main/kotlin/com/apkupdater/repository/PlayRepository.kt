@@ -121,6 +121,11 @@ class PlayRepository(
         throw it
     }
 
+    fun cachedLink(packageName: String): Link = Link.Play {
+        val app = AppDetailsHelper(auth()).using(playHttpClient).getAppByPackageName(packageName)
+        getInstallFiles(app)
+    }
+
     private fun getInstallFiles(app: App): List<PlayFile> {
         var authData = auth()
         return purchasePlayFiles(

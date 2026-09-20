@@ -17,6 +17,26 @@ import org.junit.Test
 class HtmlSourceRepositoriesTest {
 
     @Test
+    fun apkComboVersionExcludesDateAndCategory() {
+        val app = parseApkComboDetails(
+            Jsoup.parse("""<div class="version">3.0.0 · Jul 31, 2026 · <a>Tools</a></div>"""),
+            "https://apkcombo.com/dns/com.appplanex.dnschanger/"
+        )
+        assertEquals("3.0.0", app?.version)
+    }
+
+    @Test
+    fun apkComboRejectsWrongArchitectureAndHtmlDisguisedAsApk() {
+        val document = Jsoup.parse("""
+            <div id="variants-tab">
+              <li><code>x86</code><a href="https://example.com/app.apk">x86</a></li>
+              <li><code>arm64-v8a</code><a href="https://example.com/page?file=app.apk">HTML</a></li>
+            </div>
+        """)
+        assertNull(parseApkComboDownloadUrl(document, listOf("arm64-v8a")))
+    }
+
+    @Test
     fun parsesApkComboDetailsAndSelectsDeviceArchitecture() {
         val app = parseApkComboDetails(
             Jsoup.parse(

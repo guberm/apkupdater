@@ -65,10 +65,10 @@ abstract class InstallViewModel(
         block(it)
     }.launchIn(viewModelScope)
 
-    protected fun downloadAndRootInstall(id: Int, link: Link) = runCatching {
+    protected fun downloadAndRootInstall(id: Int, packageName: String, link: Link) = runCatching {
         when (link) {
             is Link.Url -> {
-                if (installer.rootInstall(downloader.download(link.link))) {
+                if (installer.rootInstall(downloader.download(link.link), packageName)) {
                     finishInstall(id)
                 } else {
                     cancelInstall(id)

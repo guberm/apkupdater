@@ -5,6 +5,11 @@ import android.util.Log
 import com.apkupdater.data.ui.AppUpdate
 import com.apkupdater.data.ui.GitHubSource
 import com.apkupdater.data.ui.PlaySource
+import com.apkupdater.data.ui.toCachedUpdate
+import com.apkupdater.data.ui.toAppUpdate
+import com.apkupdater.data.ui.Link
+import com.apkupdater.data.ui.AppInstalled
+import com.apkupdater.repository.restoreCurrentUpdates
 import com.apkupdater.viewmodel.filterVisibleUpdates
 import com.apkupdater.viewmodel.prepareUpdates
 import com.apkupdater.viewmodel.shouldKeepUpdateForIgnoredUpdates
@@ -36,6 +41,57 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 @RunWith(AndroidJUnit4::class)
 class ExampleInstrumentedTest {
+    @Test
+    fun installerRejectsWrongPackageAndInvalidApkBeforeCreatingSession() = kotlinx.coroutines.runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val installer = org.koin.core.context.GlobalContext.get().get<com.apkupdater.util.SessionInstaller>()
+        val sessionsBefore = context.packageManager.packageInstaller.mySessions.map { it.sessionId }
+        val streams = listOf(
+            File(context.applicationInfo.sourceDir).inputStream(),
+            "not an APK".byteInputStream()
+        )
+        streams.forEach { stream ->
+            val result = runCatching { installer.installPackage(9876, "com.example.wrong.package", stream) }
+            assertTrue("Invalid or mismatched APK must be rejected", result.exceptionOrNull() is IllegalArgumentException)
+        }
+        val bundle = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(bundle).use { zip ->
+            zip.putNextEntry(java.util.zip.ZipEntry("base.apk"))
+            File(context.applicationInfo.sourceDir).inputStream().use { it.copyTo(zip) }
+            zip.closeEntry()
+        }
+        val result = runCatching {
+            installer.installPackage(9876, "com.example.wrong.package", bundle.toByteArray().inputStream())
+        }
+        assertTrue("Mismatched bundled APK must be rejected", result.exceptionOrNull() is IllegalArgumentException)
+        assertEquals(sessionsBefore, context.packageManager.packageInstaller.mySessions.map { it.sessionId })
+    }
+
+    @Test
+    fun cachedLinksKeepDownloadCapabilitiesAndUseCurrentIcons() {
+        val xapk = update("app.xapk", 2).copy(
+            source = com.apkupdater.data.ui.ApkPureSource,
+            link = com.apkupdater.data.ui.Link.Xapk("https://example.com/app.xapk")
+        )
+        val cached = xapk.toCachedUpdate().copy(sourceResourceId = 1)
+        val restored = cached.toAppUpdate()
+        assertEquals(xapk.link, restored.link)
+        assertEquals(xapk.source, restored.source)
+        val play = update("app.play", 2).copy(link = Link.Play { emptyList() })
+        assertTrue(play.toCachedUpdate().toAppUpdate { Link.Play { emptyList() } }.link is Link.Play)
+    }
+
+    @Test
+    fun cachedUpdatesAreRecheckedAgainstInstalledVersions() {
+        val available = listOf(update("app.updated", 2), update("app.pending", 3), update("app.removed", 4))
+        val installed = listOf(
+            AppInstalled("Updated", "app.updated", "2", 2),
+            AppInstalled("Pending", "app.pending", "2", 2)
+        )
+        val restored = restoreCurrentUpdates(available, installed)
+        assertEquals(listOf("app.pending"), restored.map { it.packageName })
+        assertEquals(2L, restored.single().oldVersionCode)
+    }
     @Test
     fun useAppContext() {
         // Context of the app under test.

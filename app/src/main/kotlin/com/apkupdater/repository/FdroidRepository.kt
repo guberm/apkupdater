@@ -38,7 +38,7 @@ class FdroidRepository(
             .filter { appNames.contains(it.packageName) }
             .mapNotNull { app -> apps.getApp(app.packageName)?.let { installed -> app to installed } }
             .filter { (app, installed) -> filterSignature(installed, app) }
-            .mapNotNull { (app, _) -> data.packages[app.packageName]?.firstOrNull()?.let { FdroidUpdate(it, app) } }
+            .flatMap { (app, _) -> data.packages[app.packageName].orEmpty().asSequence().map { FdroidUpdate(it, app) } }
             .filter { it.apk.versionCode > apps.getVersionCode(it.app.packageName) }
             .parseUpdates(apps)
         emit(updates)
@@ -52,7 +52,7 @@ class FdroidRepository(
         val data = jarToJson(response.byteStream())
         val updates = data.apps
             .asSequence()
-            .mapNotNull { app -> data.packages[app.packageName]?.firstOrNull()?.let { FdroidUpdate(it, app) } }
+            .flatMap { app -> data.packages[app.packageName].orEmpty().asSequence().map { FdroidUpdate(it, app) } }
             .filter { it.app.name.contains(text, true) || it.app.packageName.contains(text, true) || it.apk.apkName.contains(text, true) }
             .parseUpdates(null)
         emit(Result.success(updates))
@@ -66,6 +66,8 @@ class FdroidRepository(
         .filter { filterArch(it) }
         .filter { filterAlpha(it) }
         .filter { filterBeta(it) }
+        .groupBy { it.app.packageName }
+        .values.map { variants -> variants.maxBy { it.apk.versionCode } }
         .map { it.toAppUpdate(apps?.getApp(it.app.packageName), source, url) }
         .toList()
 

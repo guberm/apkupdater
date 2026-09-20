@@ -107,7 +107,7 @@ class UpdatesViewModel(
 
 	fun installAll() = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
 		if(installer.checkPermission()) {
-			prepareUpdates(state.value.updates(), groupByPackage = true).forEach { update ->
+			prepareUpdates(state.value.updates().filter { it.link != Link.Empty }, groupByPackage = true).forEach { update ->
 				if (state.value.updates().any { it.id == update.id && it.isInstalling }) return@forEach
 				state.value = UpdatesUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
 				val job = applicationScope.launch {
@@ -152,7 +152,7 @@ class UpdatesViewModel(
 
 	override fun downloadAndRootInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
 		state.value = UpdatesUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
-		downloadAndRootInstall(update.id, update.link)
+		downloadAndRootInstall(update.id, update.packageName, update.link)
 	}
 
 	override fun downloadAndInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {

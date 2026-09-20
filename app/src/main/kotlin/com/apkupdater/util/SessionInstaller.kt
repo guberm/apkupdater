@@ -88,19 +88,39 @@ class SessionInstaller(
     private val installNewMutex = Mutex()
 
     suspend fun install(id: Int, packageName: String, stream: InputStream) {
-        if (prefs.shizukuInstall.get() || prefs.newInstaller.get()) installNew(id, packageName, listOf(stream)) else installOld(id, packageName, listOf(stream))
+        install(id, packageName, listOf(stream))
     }
 
     suspend fun install(id: Int, packageName: String, streams: List<InputStream>) {
-        if (prefs.shizukuInstall.get() || prefs.newInstaller.get()) installNew(id, packageName, streams) else installOld(id, packageName, streams)
+        val files = mutableListOf<File>()
+        try {
+            streams.forEach { input ->
+                val file = File(context.cacheDir, randomUUID())
+                files.add(file)
+                input.use { source -> file.outputStream().use { source.copyTo(it) } }
+            }
+            val packages = files.mapNotNull { context.packageManager.getPackageArchiveInfo(it.path, 0)?.packageName }
+            require(packages.isNotEmpty() && packages.all { it == packageName }) {
+                "Downloaded APK package does not match $packageName, or the base APK is invalid"
+            }
+            // Android's package installer additionally verifies every split belongs to this base and signer.
+            val verifiedStreams = files.map { it.inputStream() }
+            try {
+                if (prefs.shizukuInstall.get() || prefs.newInstaller.get()) installNew(id, packageName, verifiedStreams)
+                else installOld(id, packageName, verifiedStreams)
+            } finally {
+                verifiedStreams.forEach { it.close() }
+            }
+        } finally {
+            streams.forEach { runCatching { it.close() } }
+            files.forEach { it.delete() }
+        }
     }
 
     suspend fun installPackage(id: Int, packageName: String, stream: InputStream) {
         val file = File(context.cacheDir, randomUUID())
-        stream.use { input -> input.copyTo(file.outputStream()) }
-
         try {
-            verifyPackageName(file, packageName)
+            stream.use { input -> file.outputStream().use { input.copyTo(it) } }
             val zip = runCatching { ZipFile(file) }.getOrNull()
             if (zip == null) {
                 install(id, packageName, file.inputStream())
@@ -249,7 +269,7 @@ class SessionInstaller(
     }
 
     private fun verifyPackageName(file: File, expectedPackageName: String) {
-        val archive = context.packageManager.getPackageArchiveInfo(file.path, 0) ?: return
+        val archive = requireNotNull(context.packageManager.getPackageArchiveInfo(file.path, 0)) { "Invalid APK" }
         check(archive.packageName == expectedPackageName) {
             "Downloaded package ${archive.packageName} does not match $expectedPackageName"
         }
@@ -307,10 +327,13 @@ class SessionInstaller(
         }
     }
 
-    fun rootInstall(file: File): Boolean {
-        val res = Shell.cmd("pm install -r ${file.absolutePath}").exec().isSuccess
-        file.delete()
-        return res
+    fun rootInstall(file: File, packageName: String): Boolean {
+        try {
+            verifyPackageName(file, packageName)
+            return Shell.cmd("pm install -r ${file.absolutePath}").exec().isSuccess
+        } finally {
+            file.delete()
+        }
     }
 
     fun finish() = installMutex.unlock()

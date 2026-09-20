@@ -15,7 +15,7 @@
     <string name="ignore_app_cd">Ignore app from all sources</string>
     <string name="ignore_app_source">Ignore app from %1$s</string>
     <string name="ignore_version_all_sources">Ignore this version from all sources</string>
-    <string name="ignore_version_source">Ignore %1$s from %2$s</string>
+    <string name="ignore_version_source">Ignore version %1$s from %2$s</string>
     <string name="old_version_format">Old: %1$s (%2$s)</string>
     <string name="new_version_format">New: %1$s (%2$s)</string>
     <string name="cancel_install">Cancel</string>
@@ -53,6 +53,9 @@
     <string name="install_cd">Install App</string>
     <string name="install_all">Install All</string>
     <string name="download_from_source">Open source download page</string>
+    <string name="download_action">Download</string>
+    <string name="download_website">Website</string>
+    <string name="more_actions">More actions</string>
     <string name="open_source">Source</string>
     <string name="open_source_failure">No browser is available to open this source.</string>
     <string name="app_cd">App Icon</string>

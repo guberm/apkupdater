@@ -11,16 +11,20 @@ import com.apkupdater.data.ui.Link
 import com.apkupdater.data.ui.Source
 import com.apkupdater.data.ui.UptodownSource
 import io.github.g00fy2.versioncompare.Version
-import com.apkupdater.util.retryTransiently
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runInterruptible
+import org.jsoup.HttpStatusException
+import java.io.IOException
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import java.net.URLDecoder
+import java.net.URI
 
 private const val APK_COMBO_BASE_URL = "https://apkcombo.com"
 private const val UPTODOWN_BASE_URL = "https://en.uptodown.com"
@@ -50,7 +54,7 @@ private fun ScrapedApp.toAppUpdate(current: AppInstalled?, source: Source) = App
     oldVersionCode = current?.versionCode ?: 0L,
     source = source,
     iconUri = if (current == null) iconUrl.takeIf(String::isNotBlank)?.toUri() ?: Uri.EMPTY else Uri.EMPTY,
-    link = downloadUrl?.let(Link::Url) ?: Link.Empty,
+    link = downloadUrl?.let { Link.Url(if (source == UptodownSource) "${sourceUrl.trimEnd('/')}/download" else it) } ?: Link.Empty,
     sourceUrl = sourceUrl
 )
 
@@ -63,7 +67,7 @@ class ApkComboRepository {
         apps.chunked(SCRAPE_CONCURRENCY).forEach { chunk ->
             val attempts = coroutineScope {
                 chunk.map { app ->
-                    async(Dispatchers.IO) { app to runCatching { checkApp(app) } }
+                    async(Dispatchers.IO) { app to checkScrapedApp { checkApp(app) } }
                 }.awaitAll()
             }
             attempts.forEach { (app, result) ->
@@ -74,9 +78,10 @@ class ApkComboRepository {
                     }
             }
             emit(updates.toList())
+            firstFailure?.let { if (it is HttpStatusException && it.statusCode in listOf(403, 429)) throw it }
         }
-        firstFailure?.let { if (updates.isEmpty()) throw it }
-    }.retryTransiently().catch {
+        firstFailure?.let { throw it }
+    }.catch {
         Log.e("ApkComboRepository", "Error looking for updates.", it)
         throw it
     }
@@ -133,7 +138,7 @@ internal fun parseApkComboDetails(document: Document, fallbackUrl: String): Scra
             ?.takeIf(String::isNotBlank)
         ?: fallbackUrl
     val packageName = sourceUrl.substringBefore('?').trimEnd('/').substringAfterLast('/')
-    val version = document.selectFirst("div.version")?.text()?.trim().orEmpty()
+    val version = document.selectFirst("div.version")?.text()?.substringBefore('·')?.trim().orEmpty()
     if (packageName.isBlank() || version.isBlank()) return null
     return ScrapedApp(
         name = document.selectFirst("div.app_name")?.text()?.trim().orEmpty().ifBlank { packageName },
@@ -157,7 +162,6 @@ internal fun parseApkComboDownloadUrl(document: Document, supportedAbis: List<St
     if (variants.isEmpty()) return null
     return variants.firstOrNull { it.first.contains("universal", true) || it.first.contains("noarch", true) }?.second
         ?: supportedAbis.asSequence().mapNotNull { abi -> variants.firstOrNull { it.first.contains(abi, true) }?.second }.firstOrNull()
-        ?: variants.first().second
 }
 
 class UptodownRepository {
@@ -169,7 +173,7 @@ class UptodownRepository {
         apps.chunked(SCRAPE_CONCURRENCY).forEach { chunk ->
             val attempts = coroutineScope {
                 chunk.map { app ->
-                    async(Dispatchers.IO) { app to runCatching { checkApp(app) } }
+                    async(Dispatchers.IO) { app to checkScrapedApp { checkApp(app) } }
                 }.awaitAll()
             }
             attempts.forEach { (app, result) ->
@@ -180,9 +184,10 @@ class UptodownRepository {
                     }
             }
             emit(updates.toList())
+            firstFailure?.let { if (it is HttpStatusException && it.statusCode in listOf(403, 429)) throw it }
         }
-        firstFailure?.let { if (updates.isEmpty()) throw it }
-    }.retryTransiently().catch {
+        firstFailure?.let { throw it }
+    }.catch {
         Log.e("UptodownRepository", "Error looking for updates.", it)
         throw it
     }
@@ -208,8 +213,7 @@ class UptodownRepository {
     }
 
     private fun findAppUrl(packageName: String): String? = searchUrls(packageName).firstOrNull { url ->
-        runCatching { parseUptodownDetails(fetch("${url.trimEnd('/')}/download"), url)?.packageName == packageName }
-            .getOrDefault(false)
+        parseUptodownDetails(fetch("${url.trimEnd('/')}/download"), url)?.packageName == packageName
     }
 
     private fun searchUrls(text: String): List<String> = fetch(
@@ -253,8 +257,24 @@ internal fun parseUptodownDetails(document: Document, fallbackUrl: String): Scra
 }
 
 private fun isInstallableUrl(url: String): Boolean {
-    val normalized = URLDecoder.decode(url, Charsets.UTF_8.name()).lowercase()
-    return INSTALLABLE_EXTENSIONS.any { normalized.contains(it) }
+    val uri = runCatching { URI(url) }.getOrNull() ?: return false
+    return uri.scheme in listOf("http", "https") && INSTALLABLE_EXTENSIONS.any { uri.path.orEmpty().endsWith(it, true) }
+}
+
+private suspend fun checkScrapedApp(check: () -> AppUpdate?): Result<AppUpdate?> {
+    repeat(3) { attempt ->
+        try {
+            return Result.success(runInterruptible(Dispatchers.IO) { check() })
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            if (error is HttpStatusException && error.statusCode == 404) return Result.success(null)
+            if (attempt == 2 || error !is IOException ||
+                (error is HttpStatusException && error.statusCode < 500)) return Result.failure(error)
+            delay(500L * (attempt + 1))
+        }
+    }
+    error("Unreachable")
 }
 
 private fun absoluteUrl(value: String, baseUrl: String): String? = value

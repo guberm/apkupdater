@@ -41,7 +41,8 @@ data class CachedUpdate(
     val iconUrl: String = "",
     val linkUrl: String = "",
     val whatsNew: String = "",
-    val sourceUrl: String = ""
+    val sourceUrl: String = "",
+    val linkType: String = "url"
 )
 
 data class CachedSourceResult(
@@ -60,23 +61,39 @@ fun AppUpdate.toCachedUpdate() = CachedUpdate(
     sourceName = source.name,
     sourceResourceId = source.resourceId,
     iconUrl = iconUri.toString().takeUnless { it == Uri.EMPTY.toString() }.orEmpty(),
-    linkUrl = (link as? Link.Url)?.link.orEmpty(),
+    linkUrl = when (val value = link) {
+        is Link.Url -> value.link
+        is Link.Xapk -> value.link
+        else -> ""
+    },
+    linkType = when (link) {
+        is Link.Xapk -> "xapk"
+        is Link.Play -> "play"
+        else -> "url"
+    },
     whatsNew = whatsNew,
     sourceUrl = sourceUrl
 )
 
-fun CachedUpdate.toAppUpdate() = AppUpdate(
+fun CachedUpdate.toAppUpdate(playLink: ((String) -> Link)? = null) = AppUpdate(
     name = name,
     packageName = packageName,
     version = version,
     oldVersion = oldVersion,
     versionCode = versionCode,
     oldVersionCode = oldVersionCode,
-    source = Source(sourceName, sourceResourceId),
+    source = listOf(ApkMirrorSource, GitHubSource, GitLabSource, FdroidSource, IzzySource,
+        AptoideSource, ApkPureSource, ApkComboSource, UptodownSource, PlaySource)
+        .firstOrNull { it.name == sourceName } ?: Source(sourceName, FdroidSource.resourceId),
     iconUri = iconUrl.takeIf(String::isNotBlank)?.let(Uri::parse) ?: Uri.EMPTY,
-    link = linkUrl.takeIf(String::isNotBlank)?.let(Link::Url) ?: Link.Empty,
+    link = when {
+        sourceName == PlaySource.name -> playLink?.invoke(packageName) ?: Link.Empty
+        linkUrl.isBlank() -> Link.Empty
+        linkType == "xapk" -> Link.Xapk(linkUrl)
+        else -> Link.Url(linkUrl)
+    },
     whatsNew = whatsNew,
     sourceUrl = sourceUrl
 )
 
-fun CachedSourceResult.toAppUpdates() = updates.map(CachedUpdate::toAppUpdate)
+fun CachedSourceResult.toAppUpdates(playLink: ((String) -> Link)? = null) = updates.map { it.toAppUpdate(playLink) }

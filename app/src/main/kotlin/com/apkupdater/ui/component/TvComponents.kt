@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +18,11 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,21 +80,21 @@ fun TvInstallButton(
     app: AppUpdate,
     alternatives: List<AppUpdate> = listOf(app),
     onInstall: (AppUpdate) -> Unit,
-    onCancel: () -> Unit = {}
+    onCancel: () -> Unit = {},
+    onOpenSource: (AppUpdate) -> Unit = {}
 ) = Box {
     var expanded by remember { mutableStateOf(false) }
-    val downloadable = alternatives.filter { it.link != Link.Empty }
-    val selected = downloadable.firstOrNull { it.id == app.id } ?: downloadable.firstOrNull() ?: app
-    val installing = downloadable.firstOrNull { it.isInstalling }
+    val candidates = alternatives.latestPerSource().filter { it.link != Link.Empty || it.sourceUrl.isNotBlank() }
+    val installing = alternatives.firstOrNull { it.isInstalling }
     ElevatedButton(
+        enabled = candidates.isNotEmpty(),
         modifier = Modifier
             .padding(bottom = 8.dp)
             .widthIn(min = 64.dp),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         onClick = {
             if (installing != null) onCancel()
-            else if (downloadable.size > 1) expanded = true
-            else onInstall(selected)
+            else expanded = true
         }
     ) {
         if (installing != null) {
@@ -107,18 +110,22 @@ fun TvInstallButton(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 DownloadIcon(stringResource(R.string.install_cd), Modifier.size(20.dp))
-                downloadable.forEach { alt ->
-                    SourceIcon(alt.source, Modifier.size(20.dp))
-                }
+                Text(stringResource(R.string.download_action))
             }
         }
     }
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-        downloadable.forEach { alt ->
+        candidates.forEach { alt ->
             DropdownMenuItem(
-                text = { SmallText(alt.version) },
+                text = {
+                    val action = stringResource(if (alt.link == Link.Empty) R.string.download_website else R.string.download_action)
+                    SmallText("${alt.source.name} · ${alt.version} · $action")
+                },
                 leadingIcon = { SourceIcon(alt.source, Modifier.size(20.dp)) },
-                onClick = { expanded = false; onInstall(alt) }
+                onClick = {
+                    expanded = false
+                    if (alt.link == Link.Empty) onOpenSource(alt) else onInstall(alt)
+                }
             )
         }
     }
@@ -181,21 +188,6 @@ fun TvIgnoreVersionButton(
 }
 
 @Composable
-private fun TvDownloadFromSourceButton(
-    update: AppUpdate,
-    onOpenSource: (AppUpdate) -> Unit
-) = ElevatedButton(
-    modifier = Modifier
-        .padding(bottom = 8.dp)
-        .widthIn(min = 64.dp),
-    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-    enabled = update.sourceUrl.isNotBlank(),
-    onClick = { onOpenSource(update) }
-) {
-    DownloadIcon(stringResource(R.string.download_from_source), Modifier.size(20.dp))
-}
-
-@Composable
 fun TvIgnoreAppButton(
     app: AppUpdate,
     alternatives: List<AppUpdate>,
@@ -246,7 +238,7 @@ fun TvOpenSourceButton(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            (sources.ifEmpty { candidates }).forEach { update ->
+            (sources.ifEmpty { candidates }).take(1).forEach { update ->
                 SourceIcon(update.source, Modifier.size(20.dp))
             }
             Text(stringResource(R.string.open_source))
@@ -266,7 +258,42 @@ fun TvOpenSourceButton(
 private fun List<AppUpdate>.latestPerSource() =
     groupBy { it.source.name }.values.map { it.maxBy(AppUpdate::versionCode) }
 
-@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TvUpdateMenu(
+    app: AppUpdate,
+    alternatives: List<AppUpdate>,
+    onIgnoreApp: (AppUpdate) -> Unit,
+    onIgnoreAppFromSource: (AppUpdate) -> Unit,
+    onIgnoreVersion: (AppUpdate) -> Unit,
+    onIgnoreVersionFromSource: (AppUpdate) -> Unit
+) = Box {
+    var expanded by remember { mutableStateOf(false) }
+    IconButton(onClick = { expanded = true }) {
+        Icon(Icons.Default.MoreVert, stringResource(R.string.more_actions))
+    }
+    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.ignore_app_cd)) },
+            onClick = { expanded = false; onIgnoreApp(app) }
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.ignore_version_all_sources)) },
+            onClick = { expanded = false; onIgnoreVersion(app) }
+        )
+        alternatives.latestPerSource().forEach { update ->
+            HorizontalDivider(Modifier.padding(vertical = 4.dp))
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.ignore_app_source, update.source.name)) },
+                onClick = { expanded = false; onIgnoreAppFromSource(update) }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.ignore_version_source, update.version, update.source.name)) },
+                onClick = { expanded = false; onIgnoreVersionFromSource(update) }
+            )
+        }
+    }
+}
+
 @Composable
 fun TvUpdateItem(
     app: AppUpdate,
@@ -282,20 +309,14 @@ fun TvUpdateItem(
     Column {
         TvCommonItem(app.packageName, app.name, app.version, app.oldVersion, app.versionCode, app.oldVersionCode)
         WhatsNew(app.whatsNew)
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             TvOpenSourceButton(app, alternatives, onOpenSource)
-            TvIgnoreAppButton(app, alternatives, onIgnoreApp, onIgnoreAppFromSource)
-            TvIgnoreVersionButton(app, alternatives, onIgnoreVersion, onIgnoreVersionFromSource)
-            if (alternatives.any { it.link != Link.Empty }) {
-                TvInstallButton(app, alternatives, onInstall, onCancel)
-            } else {
-                alternatives.latestPerSource()
-                    .firstOrNull { it.sourceUrl.isNotBlank() }
-                    ?.let { TvDownloadFromSourceButton(it, onOpenSource) }
-            }
+            TvInstallButton(app, alternatives, onInstall, onCancel, onOpenSource)
+            TvUpdateMenu(app, alternatives, onIgnoreApp, onIgnoreAppFromSource, onIgnoreVersion, onIgnoreVersionFromSource)
         }
     }
 }
@@ -314,9 +335,7 @@ fun TvSearchItem(
             TvSourceIcon(app)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TvOpenSourceButton(app, onOpenSource = onOpenSource)
-                if (app.link != Link.Empty) {
-                    TvInstallButton(app, listOf(app), { onInstall(it.packageName) }, onCancel)
-                }
+                TvInstallButton(app, listOf(app), { onInstall(it.packageName) }, onCancel, onOpenSource)
             }
         }
     }
