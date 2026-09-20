@@ -276,16 +276,18 @@ private fun TvUpdateMenu(
             text = { Text(stringResource(R.string.ignore_app_cd)) },
             onClick = { expanded = false; onIgnoreApp(app) }
         )
+        alternatives.latestPerSource().forEach { update ->
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.ignore_app_source, update.source.name)) },
+                onClick = { expanded = false; onIgnoreAppFromSource(update) }
+            )
+        }
+        HorizontalDivider(Modifier.padding(vertical = 4.dp))
         DropdownMenuItem(
             text = { Text(stringResource(R.string.ignore_version_all_sources)) },
             onClick = { expanded = false; onIgnoreVersion(app) }
         )
         alternatives.latestPerSource().forEach { update ->
-            HorizontalDivider(Modifier.padding(vertical = 4.dp))
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.ignore_app_source, update.source.name)) },
-                onClick = { expanded = false; onIgnoreAppFromSource(update) }
-            )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.ignore_version_source, update.version, update.source.name)) },
                 onClick = { expanded = false; onIgnoreVersionFromSource(update) }

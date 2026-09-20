@@ -101,8 +101,12 @@ class DownloadActionTest {
             }
         }
         compose.onNodeWithContentDescription("More actions").performClick()
-        listOf("Ignore app from APKCombo", "Ignore version 2 from APKCombo", "Ignore app from GitHub", "Ignore version 3 from GitHub")
-            .forEach { compose.onNodeWithText(it).assertIsDisplayed() }
+        val orderedLabels = listOf("Ignore app from all sources", "Ignore app from APKCombo", "Ignore app from GitHub",
+            "Ignore this version from all sources", "Ignore version 2 from APKCombo", "Ignore version 3 from GitHub")
+        val tops = orderedLabels.map {
+            compose.onNodeWithText(it).assertIsDisplayed().fetchSemanticsNode().boundsInRoot.top
+        }
+        org.junit.Assert.assertTrue("App actions must precede version actions", tops.zipWithNext().all { (a, b) -> a < b })
         compose.onNodeWithText("Ignore app from APKCombo").performClick()
         compose.runOnIdle { assertEquals(update, ignoredApp); assertEquals(0, globalCalls) }
         compose.onNodeWithContentDescription("More actions").performClick()

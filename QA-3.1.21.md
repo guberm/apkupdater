@@ -1,5 +1,7 @@
 # 3.1.21 requirement audit
 
+Final delivery is 3.1.22: the overflow menu now groups all app-ignore actions first, then one divider, then all version-ignore actions. The device test verifies the exact top-to-bottom order for two sources. The pending 3.1.21 release job was cancelled to include this final UI clarification without moving an existing Git tag.
+
 ## Changes
 
 - APKCombo version parsing excludes the release date/category. APK variants must match a supported ABI (or be universal).
