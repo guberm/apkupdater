@@ -57,19 +57,25 @@ private fun ScrapedApp.toAppUpdate(current: AppInstalled?, source: Source) = App
 class ApkComboRepository {
 
     suspend fun updates(apps: List<AppInstalled>) = flow {
-        val attempts = coroutineScope {
-            apps.chunked(SCRAPE_CONCURRENCY).flatMap { chunk ->
+        val updates = mutableListOf<AppUpdate>()
+        var firstFailure: Throwable? = null
+        if (apps.isEmpty()) emit(emptyList())
+        apps.chunked(SCRAPE_CONCURRENCY).forEach { chunk ->
+            val attempts = coroutineScope {
                 chunk.map { app ->
                     async(Dispatchers.IO) { app to runCatching { checkApp(app) } }
                 }.awaitAll()
             }
+            attempts.forEach { (app, result) ->
+                result.onSuccess { it?.let(updates::add) }
+                    .onFailure {
+                        firstFailure = firstFailure ?: it
+                        Log.e("ApkComboRepository", "Error checking ${app.packageName}.", it)
+                    }
+            }
+            emit(updates.toList())
         }
-        val failures = attempts.mapNotNull { (app, result) ->
-            result.exceptionOrNull()?.also { Log.e("ApkComboRepository", "Error checking ${app.packageName}.", it) }
-        }
-        val updates = attempts.mapNotNull { it.second.getOrNull() }
-        failures.firstOrNull()?.let { throw it }
-        emit(updates)
+        firstFailure?.let { if (updates.isEmpty()) throw it }
     }.retryTransiently().catch {
         Log.e("ApkComboRepository", "Error looking for updates.", it)
         throw it
@@ -157,19 +163,25 @@ internal fun parseApkComboDownloadUrl(document: Document, supportedAbis: List<St
 class UptodownRepository {
 
     suspend fun updates(apps: List<AppInstalled>) = flow {
-        val attempts = coroutineScope {
-            apps.chunked(SCRAPE_CONCURRENCY).flatMap { chunk ->
+        val updates = mutableListOf<AppUpdate>()
+        var firstFailure: Throwable? = null
+        if (apps.isEmpty()) emit(emptyList())
+        apps.chunked(SCRAPE_CONCURRENCY).forEach { chunk ->
+            val attempts = coroutineScope {
                 chunk.map { app ->
                     async(Dispatchers.IO) { app to runCatching { checkApp(app) } }
                 }.awaitAll()
             }
+            attempts.forEach { (app, result) ->
+                result.onSuccess { it?.let(updates::add) }
+                    .onFailure {
+                        firstFailure = firstFailure ?: it
+                        Log.e("UptodownRepository", "Error checking ${app.packageName}.", it)
+                    }
+            }
+            emit(updates.toList())
         }
-        val failures = attempts.mapNotNull { (app, result) ->
-            result.exceptionOrNull()?.also { Log.e("UptodownRepository", "Error checking ${app.packageName}.", it) }
-        }
-        val updates = attempts.mapNotNull { it.second.getOrNull() }
-        failures.firstOrNull()?.let { throw it }
-        emit(updates)
+        firstFailure?.let { if (updates.isEmpty()) throw it }
     }.retryTransiently().catch {
         Log.e("UptodownRepository", "Error looking for updates.", it)
         throw it

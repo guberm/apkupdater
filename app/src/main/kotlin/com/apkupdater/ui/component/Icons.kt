@@ -3,8 +3,10 @@ package com.apkupdater.ui.component
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -77,7 +79,9 @@ fun ExcludeDisabledIcon(exclude: Boolean) = ExcludeIcon(
 fun SourceIcon(source: Source, modifier: Modifier = Modifier) = Icon(
     painterResource(id = source.resourceId),
     source.name,
-    modifier,
+    modifier
+        .background(Color.White, CircleShape)
+        .padding(3.dp),
     tint = Color.Unspecified
 )
 

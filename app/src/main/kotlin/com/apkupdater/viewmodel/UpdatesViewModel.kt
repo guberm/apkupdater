@@ -52,6 +52,7 @@ class UpdatesViewModel(
 	private val mutex = Mutex()
 	private val state = MutableStateFlow<UpdatesUiState>(UpdatesUiState.Loading)
 	val isRefreshing = MutableStateFlow(false)
+	val visibleUpdateCount = MutableStateFlow(0)
 	private val downloadJobs = ConcurrentHashMap<Int, Job>()
 	private val downloadedUris = ConcurrentHashMap<Int, MutableList<Uri>>()
 
@@ -86,7 +87,10 @@ class UpdatesViewModel(
 	fun refresh(load: Boolean = true, onlySources: Set<String>? = null) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
 		isRefreshing.value = true
 		try {
-			if (load) state.value = UpdatesUiState.Loading
+			if (load) {
+				state.value = UpdatesUiState.Loading
+				visibleUpdateCount.value = 0
+			}
 			badger.changeUpdatesBadge("")
 			updatesRepository.updates(onlySources).collect {
 				setSuccess(it)
@@ -221,6 +225,7 @@ private fun setSuccess(updates: List<AppUpdate>) = filterVisibleUpdates(
 	)
 		.let {
 			state.value = UpdatesUiState.Success(it)
+			visibleUpdateCount.value = it.size
 			badger.changeUpdatesBadge(it.distinctBy(AppUpdate::packageName).size.toString())
 		}
 

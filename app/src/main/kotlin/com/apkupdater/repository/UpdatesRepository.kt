@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
@@ -76,6 +77,7 @@ class UpdatesRepository(
                         }
 
                         setSourceStatus(name, SourceStatusState.Loading, 0)
+                        var latest: List<AppUpdate>? = null
                         val boundedSource = flow {
                             val completed = withTimeoutOrNull(SOURCE_TIMEOUT_MILLIS) {
                                 source.collect { emit(it) }
@@ -86,19 +88,23 @@ class UpdatesRepository(
                         sources += boundedSource
                             .onStart { setSourceStatus(name, SourceStatusState.Loading, 0) }
                             .onEach {
-                                writeCachedSource(name, it)
+                                latest = it
                                 setSourceStatus(name, SourceStatusState.Success, it.size)
+                            }
+                            .onCompletion { cause ->
+                                if (cause == null) latest?.let { writeCachedSource(name, it) }
                             }
                             .catch { error ->
                                 val fallback = readCachedSource(name)
+                                val available = fallback?.toAppUpdates() ?: latest.orEmpty()
                                 setSourceStatus(
                                     name,
-                                    if (fallback == null) SourceStatusState.Failed else SourceStatusState.Cached,
-                                    fallback?.updates?.size ?: 0,
+                                    SourceStatusState.Failed,
+                                    available.size,
                                     error.javaClass.simpleName
                                 )
                                 Log.e("UpdatesRepository", "refresh=$refreshId error source=$name", error)
-                                emit(fallback?.toAppUpdates().orEmpty())
+                                emit(available)
                             }
                     }
 

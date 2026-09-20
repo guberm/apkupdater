@@ -176,6 +176,7 @@ fun UpdatesScreenSuccess(
 	val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
 	val filteredUpdates = viewModel.filteredUpdates(updates, currentFilter, currentQuery)
 	val displayedUpdates = prepareUpdates(filteredUpdates, groupByPackage)
+	val refreshStatus by viewModel.refreshStatus.collectAsStateWithLifecycle()
 
 	UpdatesTopBar(viewModel)
 	RefreshStatusPanel(viewModel)
@@ -187,7 +188,11 @@ fun UpdatesScreenSuccess(
 		modifier = Modifier.weight(1f)
 	) {
 		when {
-			displayedUpdates.isEmpty() -> EmptyGrid(stringResource(R.string.no_updates_found))
+			displayedUpdates.isEmpty() -> EmptyGrid(
+				stringResource(
+					if (refreshStatus.updateCount > 0) R.string.no_visible_updates else R.string.no_updates_found
+				)
+			)
 			else -> TvGrid(viewModel, displayedUpdates, filteredUpdates, groupByPackage, handler)
 		}
 	}
@@ -196,6 +201,7 @@ fun UpdatesScreenSuccess(
 @Composable
 private fun RefreshStatusPanel(viewModel: UpdatesViewModel) {
 	val status = viewModel.refreshStatus.collectAsStateWithLifecycle().value
+	val visibleUpdateCount = viewModel.visibleUpdateCount.collectAsStateWithLifecycle().value
 	if (!status.isRefreshing && status.sourceStatuses.isEmpty()) return
 
 	val failed = status.sourceStatuses.filter { it.state == SourceStatusState.Failed }
@@ -206,7 +212,13 @@ private fun RefreshStatusPanel(viewModel: UpdatesViewModel) {
 	val summary = if (status.isRefreshing) {
 		stringResource(R.string.refresh_status_checking, status.installedCount, status.enabledSourceCount)
 	} else {
-		stringResource(R.string.refresh_status_summary, checked, status.enabledSourceCount, status.updateCount)
+		stringResource(
+			R.string.refresh_status_summary,
+			checked,
+			status.enabledSourceCount,
+			visibleUpdateCount,
+			status.updateCount
+		)
 	}
 
 	ElevatedCard(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {

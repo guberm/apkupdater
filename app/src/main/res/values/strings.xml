@@ -38,11 +38,12 @@
     <string name="download_cache_cleared">Removed %1$d cached download(s)</string>
     <string name="refresh_updates">Look for Updates</string>
     <string name="refresh_status_checking">Checking %1$d apps across %2$d sources</string>
-    <string name="refresh_status_summary">%1$d/%2$d sources complete · %3$d results</string>
+    <string name="refresh_status_summary">%1$d/%2$d complete · %3$d shown · %4$d matches</string>
     <string name="refresh_status_failed_sources">Failed: %1$s</string>
     <string name="refresh_status_cached_sources">Using cached data: %1$s</string>
     <string name="refresh_status_last_checked">Last checked at %1$s</string>
     <string name="retry_failed_sources">Retry failed</string>
+    <string name="no_visible_updates">No visible updates after applying filters</string>
     <string name="exclude_system_apps">Exclude System Apps</string>
     <string name="include_system_apps">Include System Apps</string>
     <string name="exclude_app_store">Exclude App Store</string>

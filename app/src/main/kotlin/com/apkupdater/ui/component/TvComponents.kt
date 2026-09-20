@@ -80,7 +80,9 @@ fun TvInstallButton(
     onCancel: () -> Unit = {}
 ) = Box {
     var expanded by remember { mutableStateOf(false) }
-    val installing = alternatives.firstOrNull { it.isInstalling }
+    val downloadable = alternatives.filter { it.link != Link.Empty }
+    val selected = downloadable.firstOrNull { it.id == app.id } ?: downloadable.firstOrNull() ?: app
+    val installing = downloadable.firstOrNull { it.isInstalling }
     ElevatedButton(
         modifier = Modifier
             .padding(bottom = 8.dp)
@@ -88,8 +90,8 @@ fun TvInstallButton(
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         onClick = {
             if (installing != null) onCancel()
-            else if (alternatives.size > 1) expanded = true
-            else onInstall(app)
+            else if (downloadable.size > 1) expanded = true
+            else onInstall(selected)
         }
     ) {
         if (installing != null) {
@@ -104,14 +106,14 @@ fun TvInstallButton(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                alternatives.forEach { alt ->
+                downloadable.forEach { alt ->
                     SourceIcon(alt.source, Modifier.size(20.dp))
                 }
             }
         }
     }
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-        alternatives.forEach { alt ->
+        downloadable.forEach { alt ->
             DropdownMenuItem(
                 text = { SmallText(alt.version) },
                 leadingIcon = { SourceIcon(alt.source, Modifier.size(20.dp)) },
@@ -214,7 +216,8 @@ fun TvOpenSourceButton(
     onOpenSource: (AppUpdate) -> Unit
 ) = Box {
     var expanded by remember { mutableStateOf(false) }
-    val sources = alternatives.latestPerSource().filter { it.sourceUrl.isNotBlank() }
+    val candidates = alternatives.latestPerSource()
+    val sources = candidates.filter { it.sourceUrl.isNotBlank() }
     ElevatedButton(
         modifier = Modifier.padding(bottom = 8.dp),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
@@ -223,7 +226,15 @@ fun TvOpenSourceButton(
             if (sources.size == 1) onOpenSource(sources.first()) else expanded = true
         }
     ) {
-        Text(stringResource(R.string.open_source))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            (sources.ifEmpty { candidates }).forEach { update ->
+                SourceIcon(update.source, Modifier.size(20.dp))
+            }
+            Text(stringResource(R.string.open_source))
+        }
     }
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
         sources.forEach { update ->
