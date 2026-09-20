@@ -37,6 +37,12 @@
     <string name="settings_clear_download_cache_description">Removes temporary APK files only</string>
     <string name="download_cache_cleared">Removed %1$d cached download(s)</string>
     <string name="refresh_updates">Look for Updates</string>
+    <string name="refresh_status_checking">Checking %1$d apps across %2$d sources</string>
+    <string name="refresh_status_summary">%1$d/%2$d sources complete · %3$d results</string>
+    <string name="refresh_status_failed_sources">Failed: %1$s</string>
+    <string name="refresh_status_cached_sources">Using cached data: %1$s</string>
+    <string name="refresh_status_last_checked">Last checked at %1$s</string>
+    <string name="retry_failed_sources">Retry failed</string>
     <string name="exclude_system_apps">Exclude System Apps</string>
     <string name="include_system_apps">Include System Apps</string>
     <string name="exclude_app_store">Exclude App Store</string>
@@ -61,6 +67,8 @@
     <string name="settings_autorefresh">Auto-refresh</string>
     <string name="settings_autorefresh_enable">Check automatically and notify</string>
     <string name="settings_autorefresh_interval">Check interval</string>
+    <string name="settings_autorefresh_wifi_only">Only on Wi-Fi</string>
+    <string name="settings_autorefresh_charging">Only while charging</string>
     <string name="settings_options">Options</string>
     <string name="settings_utils">Utils</string>
     <string name="settings_interval_15_minutes">15 minutes</string>
@@ -87,7 +95,15 @@
     <string name="source_github" translatable="false">GitHub</string>
     <string name="source_gitlab" translatable="false">GitLab</string>
     <string name="source_apkpure" translatable="false">APKPure</string>
+    <string name="source_apkcombo" translatable="false">APKCombo</string>
+    <string name="source_uptodown" translatable="false">Uptodown</string>
     <string name="source_play" translatable="false">Play</string>
+    <string name="settings_custom_fdroid">Custom F-Droid repositories</string>
+    <string name="settings_custom_fdroid_name">Repository name</string>
+    <string name="settings_custom_fdroid_url">Repository URL (HTTPS)</string>
+    <string name="settings_custom_fdroid_add">Add repository</string>
+    <string name="settings_custom_fdroid_remove">Remove</string>
+    <string name="settings_custom_fdroid_invalid">Enter a unique name and an HTTPS URL.</string>
     <string name="about">About</string>
     <string name="frequency">Frequency</string>
     <string name="theme">Theme</string>

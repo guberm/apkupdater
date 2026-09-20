@@ -25,8 +25,11 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.core.content.ContextCompat
 import com.apkupdater.R
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -73,6 +76,14 @@ fun Context.getAppName(packageName: String): String = runCatching {
 
 inline fun <reified T> List<Flow<T>>.combine(crossinline block: suspend (Array<T>) -> Unit) =
 	combine(this) { block(it) }
+
+fun <T> Flow<T>.retryTransiently() = retryWhen { cause, attempt ->
+		if (cause is CancellationException) false
+		else if (attempt < 2) {
+			delay(500L * (attempt + 1))
+			true
+		} else false
+	}
 
 fun ByteArray.toSha1(): String = MessageDigest
 	.getInstance("SHA-1")

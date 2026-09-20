@@ -1,13 +1,13 @@
 # APK Updater
 
-APK Updater finds and installs updates for apps already installed on Android devices. It aggregates APKMirror, Aptoide, F-Droid, IzzyOnDroid, APKPure, GitLab, GitHub, and Google Play instead of depending on a single store.
+APK Updater finds and installs updates for apps already installed on Android devices. It aggregates APKMirror, Aptoide, F-Droid, IzzyOnDroid, APKPure, APKCombo, Uptodown, GitLab, GitHub, and Google Play instead of depending on a single store.
 
 This project is a modified fork of [rumboalla/APKUpdater](https://github.com/rumboalla/apkupdater) with additional features. The changes in this fork were made in 2026. This branch uses one TV-style, D-pad-friendly layout on phones, tablets, Android TV, and Google TV. The separate phone UI and UI mode switches are intentionally not included.
 
 ## Features
 
 - A single TV-style interface built with Jetpack Compose and Material 3.
-- Update and search results from APKMirror, Aptoide, F-Droid, IzzyOnDroid, APKPure, GitLab, GitHub, and Google Play.
+- Update and search results from APKMirror, Aptoide, F-Droid, IzzyOnDroid, APKPure, APKCombo, Uptodown, GitLab, GitHub, and Google Play.
 - Direct APK, APKM, APKS, XAPK, and split-package installation where supported.
 - A **Source** button that opens the provider page for each result.
 - Background update checks and notifications.
@@ -24,7 +24,7 @@ This project is a modified fork of [rumboalla/APKUpdater](https://github.com/rum
 
 ## Download
 
-- [APK Updater 3.1.17](https://github.com/guberm/apkupdater/releases/download/3.1.17/com.guberdev.apkupdater-release.apk)
+- [APK Updater 3.1.18](https://github.com/guberm/apkupdater/releases/download/3.1.18/com.guberdev.apkupdater-release.apk)
 
 ## Build
 

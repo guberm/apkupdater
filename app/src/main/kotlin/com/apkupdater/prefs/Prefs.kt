@@ -1,6 +1,8 @@
 package com.apkupdater.prefs
 
 import com.apkupdater.data.ui.Screen
+import com.apkupdater.data.ui.CachedSourceResult
+import com.apkupdater.data.ui.FdroidRepo
 import com.aurora.gplayapi.data.models.AuthData
 import com.kryptoprefs.context.KryptoContext
 import com.kryptoprefs.gson.json
@@ -28,6 +30,8 @@ class Prefs(
 	val useIzzy = boolean("useIzzy", defValue = true, backed = true)
 	val useAptoide = boolean("useAptoide", defValue = true, backed = true)
 	val useApkPure = boolean("useApkPure", defValue = true, backed = true)
+	val useApkCombo = boolean("useApkCombo", defValue = false, backed = true)
+	val useUptodown = boolean("useUptodown", defValue = false, backed = true)
 	val usePlay = boolean("usePlay", defValue = true, backed = true)
 	val enableAlarm = boolean("enableAlarm", defValue = false, backed = true)
 	val refreshInterval = int("refreshInterval", 7, backed = true)
@@ -43,4 +47,8 @@ class Prefs(
 	val groupByPackageDefault = boolean("groupByPackageDefault", defValue = true, backed = true)
 	val ignoreSameVersion = boolean("ignoreSameVersion", defValue = false, backed = true)
 	val apkMirrorArch = int("apkMirrorArch", defValue = 0, backed = true)
+	val cachedUpdateSources = json("cachedUpdateSources", emptyList<CachedSourceResult>(), true)
+	val refreshOnWifiOnly = boolean("refreshOnWifiOnly", defValue = false, backed = true)
+	val refreshWhileCharging = boolean("refreshWhileCharging", defValue = false, backed = true)
+	val customFdroidRepos = json("customFdroidRepos", emptyList<FdroidRepo>(), true)
 }

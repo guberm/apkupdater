@@ -21,4 +21,5 @@ class UpdatesViewModelTest {
     fun keepsBetaVersionWhenIgnoreBetaIsDisabled() {
         assertTrue(shouldKeepUpdateForIgnoredReleaseLabels("1.2.0-beta1", ignoreAlpha = true, ignoreBeta = false))
     }
+
 }

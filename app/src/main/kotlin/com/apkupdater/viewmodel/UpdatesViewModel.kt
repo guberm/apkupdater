@@ -81,18 +81,24 @@ class UpdatesViewModel(
 	}
 
 	fun state(): StateFlow<UpdatesUiState> = state
+	val refreshStatus = updatesRepository.status()
 
-	fun refresh(load: Boolean = true) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
+	fun refresh(load: Boolean = true, onlySources: Set<String>? = null) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
 		isRefreshing.value = true
 		try {
 			if (load) state.value = UpdatesUiState.Loading
 			badger.changeUpdatesBadge("")
-			updatesRepository.updates().collect {
+			updatesRepository.updates(onlySources).collect {
 				setSuccess(it)
 			}
 		} finally {
 			isRefreshing.value = false
 		}
+	}
+
+	fun retryFailedSources() {
+		val failed = refreshStatus.value.failedSources
+		refresh(load = false, onlySources = failed.takeIf { it.isNotEmpty() })
 	}
 
 	fun installAll() = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
@@ -205,7 +211,7 @@ class UpdatesViewModel(
 		}
 	}
 
-	private fun setSuccess(updates: List<AppUpdate>) = filterVisibleUpdates(
+private fun setSuccess(updates: List<AppUpdate>) = filterVisibleUpdates(
 		updates = updates,
 		ignoredVersions = prefs.ignoredVersions.get().toSet(),
 		ignoredUpdates = prefs.ignoredUpdates.get().toSet(),
@@ -240,7 +246,23 @@ internal fun prepareUpdates(
 	return valid
 		.groupBy { it.packageName }
 		.values
-		.map { alternatives -> alternatives.maxBy { it.versionCode } }
+		.map { alternatives -> alternatives.maxWith(::compareUpdateCandidates) }
+}
+
+private fun compareUpdateCandidates(left: AppUpdate, right: AppUpdate): Int = compareValuesBy(
+	left,
+	right,
+		{ it.versionCode },
+		{ it.link != Link.Empty },
+		{ sourcePriority(it.source.name) }
+)
+
+private fun sourcePriority(source: String) = when (source) {
+	"Play" -> 5
+	"F-Droid (Main)", "F-Droid (Izzy)" -> 4
+	"GitHub", "GitLab" -> 3
+	"ApkMirror", "Aptoide", "ApkPure" -> 2
+	else -> 1
 }
 
 internal fun filterVisibleUpdates(

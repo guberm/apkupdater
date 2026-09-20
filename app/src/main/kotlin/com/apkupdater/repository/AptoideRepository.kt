@@ -17,6 +17,7 @@ import com.apkupdater.data.ui.toApksData
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.service.AptoideService
 import com.apkupdater.util.randomUUID
+import com.apkupdater.util.retryTransiently
 import io.github.g00fy2.versioncompare.Version
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
@@ -47,9 +48,9 @@ class AptoideRepository(
             .list
             .filter { Version(it.file.vername) > Version(apps.getVersion(it.packageName)) }
         emit(r.map { it.toAppUpdate(apps.getApp(it.packageName)) })
-    }.catch {
-        emit(emptyList())
+    }.retryTransiently().catch {
         Log.e("AptoideRepository", "Error looking for updates.", it)
+        throw it
     }
 
     suspend fun search(text: String) = flow {

@@ -262,7 +262,9 @@ fun TvUpdateItem(
             TvOpenSourceButton(app, alternatives, onOpenSource)
             TvIgnoreAppButton(app, alternatives, onIgnoreApp, onIgnoreAppFromSource)
             TvIgnoreVersionButton(app, alternatives, onIgnoreVersion, onIgnoreVersionFromSource)
-            TvInstallButton(app, alternatives, onInstall, onCancel)
+            if (alternatives.any { it.link != Link.Empty }) {
+                TvInstallButton(app, alternatives, onInstall, onCancel)
+            }
         }
     }
 }

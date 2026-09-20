@@ -11,6 +11,7 @@ import com.apkupdater.data.ui.getApp
 import com.apkupdater.data.ui.getSignature
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.service.ApkPureService
+import com.apkupdater.util.retryTransiently
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
@@ -33,9 +34,9 @@ class ApkPureRepository(
             .filter { filterBeta(it) }
             .map { it.toAppUpdate(apps.getApp(it.package_name)) }
         emit(updates)
-    }.catch {
+    }.retryTransiently().catch {
         Log.e("ApkPureRepository", it.message, it)
-        emit(emptyList())
+        throw it
     }
 
     suspend fun search(text: String) = flow {

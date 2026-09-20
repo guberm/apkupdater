@@ -100,6 +100,7 @@ class SessionInstaller(
         stream.use { input -> input.copyTo(file.outputStream()) }
 
         try {
+            verifyPackageName(file, packageName)
             val zip = runCatching { ZipFile(file) }.getOrNull()
             if (zip == null) {
                 install(id, packageName, file.inputStream())
@@ -244,6 +245,13 @@ class SessionInstaller(
                 val pending = PendingIntent.getBroadcast(context, sessionId, intent, FLAG_UPDATE_CURRENT or FLAG_MUTABLE)
                 session.commit(pending.intentSender)
             }
+        }
+    }
+
+    private fun verifyPackageName(file: File, expectedPackageName: String) {
+        val archive = context.packageManager.getPackageArchiveInfo(file.path, 0) ?: return
+        check(archive.packageName == expectedPackageName) {
+            "Downloaded package ${archive.packageName} does not match $expectedPackageName"
         }
     }
 

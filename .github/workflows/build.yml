@@ -87,9 +87,10 @@ jobs:
           ./app/build/outputs/apk/release/com.guberdev.apkupdater-release.apk
           ./app/build/outputs/apk/release/com.guberdev.apkupdater-sensitive-logging-release.apk
         body: |
-          - Count updates by unique apps instead of duplicate results from multiple sources.
-          - Exclude ignored apps, versions, and release labels from the notification count.
-          - Remove stale update notifications when no visible updates remain.
+          - Added APKCombo and Uptodown update sources.
+          - Added transient network retries, source health reporting, and a seven-day last-successful-result cache.
+          - Added Retry failed sources, installable-source arbitration, package-name validation, custom F-Droid repositories, and Wi-Fi/charging constraints for auto-refresh.
+          - Improved the Updates screen with refresh completeness, cached-result, and failed-source feedback.
           - The sensitive-logging APK includes full Play request URLs and auth/cookie headers for manual debugging. Do not share its logs.
           - Both APKs use the same package, version, and signing certificate.
         prerelease: false

@@ -11,6 +11,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
 import com.apkupdater.data.ui.SettingsUiState
+import com.apkupdater.data.ui.FdroidRepo
+import com.apkupdater.data.ui.normalized
 import com.apkupdater.data.snack.TextSnack
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.repository.AppsRepository
@@ -56,6 +58,7 @@ class SettingsViewModel(
 
 	val state = MutableStateFlow<SettingsUiState>(SettingsUiState.Settings)
 	val shizukuInstall = MutableStateFlow(prefs.shizukuInstall.get())
+	val customFdroidRepos = MutableStateFlow(prefs.customFdroidRepos.get())
 
 	init {
 		Shizuku.addRequestPermissionResultListener(this)
@@ -129,9 +132,39 @@ class SettingsViewModel(
 	fun setUseAptoide(b: Boolean) = prefs.useAptoide.put(b)
 	fun getUseApkPure() = prefs.useApkPure.get()
 	fun setUseApkPure(b: Boolean) = prefs.useApkPure.put(b)
+	fun getUseApkCombo() = prefs.useApkCombo.get()
+	fun setUseApkCombo(b: Boolean) = prefs.useApkCombo.put(b)
+	fun getUseUptodown() = prefs.useUptodown.get()
+	fun setUseUptodown(b: Boolean) = prefs.useUptodown.put(b)
 	fun getUsePlay() = prefs.usePlay.get()
 	fun setUsePlay(b: Boolean) = prefs.usePlay.put(b)
+	fun addCustomFdroidRepo(name: String, url: String): Boolean {
+		val repo = FdroidRepo(name, url).normalized()
+		if (repo.name.isBlank() || !repo.url.startsWith("https://") || prefs.customFdroidRepos.get().any { it.name.equals(repo.name, true) }) {
+			return false
+		}
+		val updated = prefs.customFdroidRepos.get() + repo
+		prefs.customFdroidRepos.put(updated)
+		customFdroidRepos.value = updated
+		return true
+	}
+
+	fun removeCustomFdroidRepo(repo: FdroidRepo) {
+		val updated = prefs.customFdroidRepos.get().filterNot { it == repo }
+		prefs.customFdroidRepos.put(updated)
+		customFdroidRepos.value = updated
+	}
 	fun getAutoRefreshEnabled() = prefs.enableAlarm.get()
+	fun getRefreshOnWifiOnly() = prefs.refreshOnWifiOnly.get()
+	fun setRefreshOnWifiOnly(b: Boolean) {
+		prefs.refreshOnWifiOnly.put(b)
+		UpdatesWorker.schedule(workManager, getAutoRefreshEnabled())
+	}
+	fun getRefreshWhileCharging() = prefs.refreshWhileCharging.get()
+	fun setRefreshWhileCharging(b: Boolean) {
+		prefs.refreshWhileCharging.put(b)
+		UpdatesWorker.schedule(workManager, getAutoRefreshEnabled())
+	}
 	fun getRootInstall() = prefs.rootInstall.get()
 	fun getRefreshInterval() = prefs.refreshInterval.get()
 	fun getTheme() = prefs.theme.get()

@@ -12,12 +12,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.TopAppBar
@@ -35,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.apkupdater.R
 import com.apkupdater.data.ui.AppUpdate
+import com.apkupdater.data.ui.SourceStatusState
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.ui.component.DefaultErrorScreen
 import com.apkupdater.ui.component.DownloadIcon
@@ -48,6 +52,8 @@ import com.apkupdater.viewmodel.UpdatesFilter
 import com.apkupdater.viewmodel.UpdatesViewModel
 import com.apkupdater.viewmodel.prepareUpdates
 import org.koin.compose.koinInject
+import java.text.DateFormat
+import java.util.Date
 
 
 @Composable
@@ -151,6 +157,7 @@ fun UpdatesFilterBar(viewModel: UpdatesViewModel, updates: List<AppUpdate>) {
 @Composable
 fun UpdatesScreenLoading(viewModel: UpdatesViewModel) = Column {
 	UpdatesTopBar(viewModel)
+	RefreshStatusPanel(viewModel)
 	LoadingGrid()
 }
 
@@ -171,6 +178,7 @@ fun UpdatesScreenSuccess(
 	val displayedUpdates = prepareUpdates(filteredUpdates, groupByPackage)
 
 	UpdatesTopBar(viewModel)
+	RefreshStatusPanel(viewModel)
 	UpdatesFilterBar(viewModel, updates)
 
 	PullToRefreshBox(
@@ -181,6 +189,65 @@ fun UpdatesScreenSuccess(
 		when {
 			displayedUpdates.isEmpty() -> EmptyGrid(stringResource(R.string.no_updates_found))
 			else -> TvGrid(viewModel, displayedUpdates, filteredUpdates, groupByPackage, handler)
+		}
+	}
+}
+
+@Composable
+private fun RefreshStatusPanel(viewModel: UpdatesViewModel) {
+	val status = viewModel.refreshStatus.collectAsStateWithLifecycle().value
+	if (!status.isRefreshing && status.sourceStatuses.isEmpty()) return
+
+	val failed = status.sourceStatuses.filter { it.state == SourceStatusState.Failed }
+	val cached = status.sourceStatuses.filter { it.state == SourceStatusState.Cached }
+	val checked = status.sourceStatuses.count {
+		it.state == SourceStatusState.Success || it.state == SourceStatusState.Cached
+	}
+	val summary = if (status.isRefreshing) {
+		stringResource(R.string.refresh_status_checking, status.installedCount, status.enabledSourceCount)
+	} else {
+		stringResource(R.string.refresh_status_summary, checked, status.enabledSourceCount, status.updateCount)
+	}
+
+	ElevatedCard(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+		Row(
+			Modifier.fillMaxWidth().padding(start = 12.dp, top = 8.dp, bottom = 8.dp),
+			verticalAlignment = Alignment.CenterVertically
+		) {
+			if (status.isRefreshing) {
+				CircularProgressIndicator(Modifier.size(24.dp))
+				Box(Modifier.size(8.dp))
+			}
+			Column(Modifier.weight(1f)) {
+				Text(summary, style = MaterialTheme.typography.titleSmall)
+				if (failed.isNotEmpty()) {
+					Text(
+						stringResource(R.string.refresh_status_failed_sources, failed.joinToString { it.name }),
+						style = MaterialTheme.typography.bodySmall,
+						color = MaterialTheme.colorScheme.error
+					)
+				}
+				if (cached.isNotEmpty()) {
+					Text(
+						stringResource(R.string.refresh_status_cached_sources, cached.joinToString { it.name }),
+						style = MaterialTheme.typography.bodySmall
+					)
+				}
+				if (!status.isRefreshing && status.lastRefreshAt > 0L) {
+					Text(
+						stringResource(
+							R.string.refresh_status_last_checked,
+							DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(status.lastRefreshAt))
+						),
+						style = MaterialTheme.typography.bodySmall
+					)
+				}
+			}
+			if (failed.isNotEmpty() && !status.isRefreshing) {
+				TextButton(onClick = viewModel::retryFailedSources) {
+					Text(stringResource(R.string.retry_failed_sources))
+				}
+			}
 		}
 	}
 }

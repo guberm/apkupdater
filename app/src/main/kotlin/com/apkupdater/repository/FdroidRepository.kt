@@ -12,6 +12,7 @@ import com.apkupdater.data.ui.getApp
 import com.apkupdater.data.ui.getVersionCode
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.service.FdroidService
+import com.apkupdater.util.retryTransiently
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
@@ -41,9 +42,9 @@ class FdroidRepository(
             .filter { it.apk.versionCode > apps.getVersionCode(it.app.packageName) }
             .parseUpdates(apps)
         emit(updates)
-    }.catch {
-        emit(emptyList())
+    }.retryTransiently().catch {
         Log.e("FdroidRepository", "Error looking for updates.", it)
+        throw it
     }
 
     suspend fun search(text: String) = flow {

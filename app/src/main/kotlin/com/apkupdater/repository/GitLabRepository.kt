@@ -14,6 +14,7 @@ import com.apkupdater.prefs.Prefs
 import com.apkupdater.service.GitLabService
 import com.apkupdater.util.combine
 import com.apkupdater.util.filterVersionTag
+import com.apkupdater.util.retryTransiently
 import io.github.g00fy2.versioncompare.Version
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -76,9 +77,9 @@ class GitLabRepository(
         } else {
             emit(emptyList())
         }
-    }.catch {
-        emit(emptyList())
+    }.retryTransiently().catch {
         Log.e("GitLabRepository", "Error fetching releases for $packageName.", it)
+        throw it
     }
 
     suspend fun search(text: String) = flow {

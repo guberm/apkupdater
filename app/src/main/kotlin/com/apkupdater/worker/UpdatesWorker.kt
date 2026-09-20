@@ -2,7 +2,9 @@ package com.apkupdater.worker
 
 import android.content.Context
 import androidx.work.CoroutineWorker
+import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -46,10 +48,14 @@ class UpdatesWorker(
             if (!enabled) return cancel(workManager)
 
             workManager.cancelUniqueWork(LEGACY_WORK_NAME)
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(if (prefs.refreshOnWifiOnly.get()) NetworkType.UNMETERED else NetworkType.CONNECTED)
+                .setRequiresCharging(prefs.refreshWhileCharging.get())
+                .build()
             val request = PeriodicWorkRequestBuilder<UpdatesWorker>(
                 refreshIntervalMinutes(prefs.refreshInterval.get()),
                 TimeUnit.MINUTES
-            ).build()
+            ).setConstraints(constraints).build()
             workManager.enqueueUniquePeriodicWork(WORK_NAME, policy, request)
         }
     }

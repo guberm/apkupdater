@@ -13,6 +13,7 @@ import com.apkupdater.data.ui.getVersionCode
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.util.play.NativeDeviceInfoProvider
 import com.apkupdater.util.play.PlayHttpClient
+import com.apkupdater.util.retryTransiently
 import com.aurora.gplayapi.data.models.App
 import com.aurora.gplayapi.data.models.AuthData
 import com.aurora.gplayapi.data.models.PlayFile
@@ -95,7 +96,7 @@ class PlayRepository(
                 .toAppUpdate(::getInstallFiles)
             emit(Result.success(listOf(update)))
         }
-    }.catch {
+    }.retryTransiently().catch {
         emit(Result.failure(it))
         Log.e("PlayRepository", "Error searching for $text.", it)
     }
@@ -115,9 +116,9 @@ class PlayRepository(
                 )
             }
         emit(updates)
-    }.catch {
-        emit(emptyList())
+    }.retryTransiently().catch {
         Log.e("PlayRepository", "Error looking for updates.", it)
+        throw it
     }
 
     private fun getInstallFiles(app: App): List<PlayFile> {

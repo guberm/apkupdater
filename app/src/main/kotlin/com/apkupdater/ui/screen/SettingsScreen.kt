@@ -17,11 +17,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -199,11 +202,24 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 			R.drawable.ic_apkpure
 		)
 		SwitchSetting(
+			{ viewModel.getUseApkCombo() },
+			{ viewModel.setUseApkCombo(it) },
+			stringResource(R.string.source_apkcombo),
+			R.drawable.ic_download
+		)
+		SwitchSetting(
+			{ viewModel.getUseUptodown() },
+			{ viewModel.setUseUptodown(it) },
+			stringResource(R.string.source_uptodown),
+			R.drawable.ic_download
+		)
+		SwitchSetting(
 			{ viewModel.getUsePlay() },
 			{ viewModel.setUsePlay(it) },
 			stringResource(R.string.source_play) + " (Alpha)",
 			R.drawable.ic_play
 		)
+		CustomFdroidSettings(viewModel)
 	}
 
 	item {
@@ -289,6 +305,18 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 			icon = R.drawable.ic_frequency,
 			width = 180
 		)
+		SwitchSetting(
+			{ viewModel.getRefreshOnWifiOnly() },
+			{ viewModel.setRefreshOnWifiOnly(it) },
+			stringResource(R.string.settings_autorefresh_wifi_only),
+			R.drawable.ic_frequency
+		)
+		SwitchSetting(
+			{ viewModel.getRefreshWhileCharging() },
+			{ viewModel.setRefreshWhileCharging(it) },
+			stringResource(R.string.settings_autorefresh_charging),
+			R.drawable.ic_alarm
+		)
 	}
 	item {
 		val context = LocalContext.current
@@ -368,6 +396,62 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 			R.drawable.ic_block,
 			R.drawable.ic_block
 		)
+	}
+}
+
+@Composable
+private fun CustomFdroidSettings(viewModel: SettingsViewModel) {
+	val repositories = viewModel.customFdroidRepos.collectAsStateWithLifecycle().value
+	val name = remember { mutableStateOf("") }
+	val url = remember { mutableStateOf("") }
+	val invalid = remember { mutableStateOf(false) }
+
+	LargeTitle(stringResource(R.string.settings_custom_fdroid), Modifier.padding(start = 16.dp, top = 16.dp))
+	OutlinedTextField(
+		value = name.value,
+		onValueChange = { name.value = it; invalid.value = false },
+		modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+		label = { Text(stringResource(R.string.settings_custom_fdroid_name)) },
+		singleLine = true
+	)
+	OutlinedTextField(
+		value = url.value,
+		onValueChange = { url.value = it; invalid.value = false },
+		modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+		label = { Text(stringResource(R.string.settings_custom_fdroid_url)) },
+		singleLine = true
+	)
+	Button(
+		onClick = {
+			if (viewModel.addCustomFdroidRepo(name.value, url.value)) {
+				name.value = ""
+				url.value = ""
+				invalid.value = false
+			} else {
+				invalid.value = true
+			}
+		},
+		modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+	) {
+		Text(stringResource(R.string.settings_custom_fdroid_add))
+	}
+	if (invalid.value) {
+		Text(
+			stringResource(R.string.settings_custom_fdroid_invalid),
+			color = MaterialTheme.colorScheme.error,
+			modifier = Modifier.padding(horizontal = 16.dp)
+		)
+	}
+	repositories.forEach { repo ->
+		Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), verticalAlignment = CenterVertically) {
+			Column(Modifier.weight(1f)) {
+				MediumTitle(repo.name)
+				MediumText(repo.url, maxLines = 1)
+			}
+			TextButton(onClick = { viewModel.removeCustomFdroidRepo(repo) }) {
+				Text(stringResource(R.string.settings_custom_fdroid_remove))
+			}
+		}
 	}
 }
 
