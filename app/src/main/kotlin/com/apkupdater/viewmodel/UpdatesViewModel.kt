@@ -16,6 +16,7 @@ import com.apkupdater.data.ui.removeId
 import com.apkupdater.data.ui.removePackage
 import com.apkupdater.data.ui.setIsInstalling
 import com.apkupdater.data.ui.setProgress
+import com.apkupdater.data.ui.preserveActiveDownloads
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.repository.UpdatesRepository
 import com.apkupdater.util.Badger
@@ -29,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import java.util.concurrent.ConcurrentHashMap
@@ -50,6 +52,7 @@ class UpdatesViewModel(
 ) : InstallViewModel(downloader2, installer, prefs, snackBar, stringer, installLog) {
 
 	private val mutex = Mutex()
+	private val refreshMutex = Mutex()
 	private val state = MutableStateFlow<UpdatesUiState>(UpdatesUiState.Loading)
 	val isRefreshing = MutableStateFlow(false)
 	val visibleUpdateCount = MutableStateFlow(0)
@@ -77,23 +80,25 @@ class UpdatesViewModel(
 	init {
 		subscribeToInstallStatus()
 		subscribeToInstallProgress { progress ->
-			state.value = UpdatesUiState.Success(state.value.mutableUpdates().setProgress(progress))
+			state.update { current ->
+				if (current.updates().any { it.id == progress.id }) UpdatesUiState.Success(current.mutableUpdates().setProgress(progress)) else current
+			}
 		}
 	}
 
 	fun state(): StateFlow<UpdatesUiState> = state
 	val refreshStatus = updatesRepository.status()
 
-	fun refresh(load: Boolean = true, onlySources: Set<String>? = null) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
+	fun refresh(load: Boolean = true, onlySources: Set<String>? = null) = viewModelScope.launchWithMutex(refreshMutex, Dispatchers.IO) {
 		isRefreshing.value = true
 		try {
-			if (load) {
+			if (load && state.value !is UpdatesUiState.Success) {
 				state.value = UpdatesUiState.Loading
 				visibleUpdateCount.value = 0
 			}
 			badger.changeUpdatesBadge("")
 			updatesRepository.updates(onlySources).collect {
-				setSuccess(it)
+				setSuccess(it, preserveDownloads = true)
 			}
 		} finally {
 			isRefreshing.value = false
@@ -109,7 +114,7 @@ class UpdatesViewModel(
 		if(installer.checkPermission()) {
 			prepareUpdates(state.value.updates().filter { it.link != Link.Empty }, groupByPackage = true).forEach { update ->
 				if (state.value.updates().any { it.id == update.id && it.isInstalling }) return@forEach
-				state.value = UpdatesUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
+				state.update { UpdatesUiState.Success(it.mutableUpdates().setIsInstalling(update.id, true)) }
 				val job = applicationScope.launch {
 					performDownloadAndInstall(update)
 				}
@@ -140,7 +145,7 @@ class UpdatesViewModel(
 		downloader2.cancelDownload(id)
 		downloadJobs.remove(id)?.cancel()
 		cleanupDownload(id)
-		state.value = UpdatesUiState.Success(state.value.mutableUpdates().setIsInstalling(id, false))
+		state.update { UpdatesUiState.Success(it.mutableUpdates().setIsInstalling(id, false)) }
 		installer.finish()
 	}
 
@@ -151,13 +156,13 @@ class UpdatesViewModel(
 	}
 
 	override fun downloadAndRootInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
-		state.value = UpdatesUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
+		state.update { UpdatesUiState.Success(it.mutableUpdates().setIsInstalling(update.id, true)) }
 		downloadAndRootInstall(update.id, update.packageName, update.link)
 	}
 
 	override fun downloadAndInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
 		if(installer.checkPermission()) {
-			state.value = UpdatesUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
+			state.update { UpdatesUiState.Success(it.mutableUpdates().setIsInstalling(update.id, true)) }
 			val job = viewModelScope.launch(Dispatchers.IO) {
 				performDownloadAndInstall(update)
 			}
@@ -215,7 +220,7 @@ class UpdatesViewModel(
 		}
 	}
 
-private fun setSuccess(updates: List<AppUpdate>) = filterVisibleUpdates(
+private fun setSuccess(updates: List<AppUpdate>, preserveDownloads: Boolean = false) = filterVisibleUpdates(
 		updates = updates,
 		ignoredVersions = prefs.ignoredVersions.get().toSet(),
 		ignoredUpdates = prefs.ignoredUpdates.get().toSet(),
@@ -223,10 +228,13 @@ private fun setSuccess(updates: List<AppUpdate>) = filterVisibleUpdates(
 		ignoreAlpha = prefs.ignoreAlpha.get(),
 		ignoreBeta = prefs.ignoreBeta.get()
 	)
-		.let {
-			state.value = UpdatesUiState.Success(it)
-			visibleUpdateCount.value = it.size
-			badger.changeUpdatesBadge(it.distinctBy(AppUpdate::packageName).size.toString())
+		.let { visible ->
+			state.update { current ->
+				UpdatesUiState.Success(if (preserveDownloads) visible.preserveActiveDownloads(current.updates()) else visible)
+			}
+			val displayed = state.value.updates()
+			visibleUpdateCount.value = displayed.size
+			badger.changeUpdatesBadge(displayed.distinctBy(AppUpdate::packageName).size.toString())
 		}
 
 	private fun cleanupDownload(id: Int) {

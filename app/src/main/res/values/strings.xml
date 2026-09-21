@@ -1,4 +1,7 @@
 <resources>
+    <string name="cancel_download_action">Cancel</string>
+    <string name="downloading_progress">Downloading</string>
+    <string name="preparing_installation">Preparing installation</string>
 
     <string name="app_name" translatable="false">APK Updater</string>
     <string name="prefs_name" translatable="false">APKUpdater</string>

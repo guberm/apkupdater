@@ -1,6 +1,6 @@
 # 3.1.21 requirement audit
 
-Final delivery is 3.1.23: the overflow menu groups all app-ignore actions first, then one divider, then all version-ignore actions. The device test verifies the exact top-to-bottom order for two sources. The pending 3.1.21 release job was cancelled to include this final UI clarification without moving an existing Git tag. Signed 3.1.22 was installed and smoke-tested; this revealed a white-on-white APKMirror logo, fixed in 3.1.23 with a pixel-contrast regression test.
+Final delivery is 3.1.24: the overflow menu groups all app-ignore actions first, then one divider, then all version-ignore actions. The device test verifies the exact top-to-bottom order for two sources. Pending 3.1.21 and 3.1.23 release jobs were cancelled for user-requested refinements without moving existing Git tags. Signed 3.1.22 was installed and smoke-tested. The final UI removes icon backplates, uses theme-aware monochrome logos and a prominent Download action, and shows persistent download progress with a Cancel button. Incoming scan/search results preserve active transfer state; refresh/search locks no longer block installation completion/cancellation.
 
 ## Changes
 
@@ -19,11 +19,12 @@ PowerShell, with Android SDK configured and an authorized device attached:
 
 ```powershell
 $env:BUILD_TAG='.debug'
-$env:BUILD_NUMBER='83'
+$env:BUILD_NUMBER='85'
 .\gradlew.bat :app:testDebugUnitTest :app:lint :app:assembleDebug :app:connectedDebugAndroidTest --no-daemon
 ```
 
-- 28 JVM tests and 18 instrumented tests passed on Pixel 9 Pro XL, Android 17.
+- 28 JVM tests and 21 instrumented tests passed on Pixel 9 Pro XL, Android 17.
+- Additional regressions check source-logo contrast in light/dark themes and persistent progress across replacement/empty source emissions.
 - Instrumented checks include visible/clickable Download and Website actions, single-row actions and the overflow callback, cached link restoration, filtering/counts, and rejection of a wrong-package APK, wrong-package bundled APK, and invalid binary before any installer session is created.
 - ARTEMIS independently exercised a nonexistent app filter: `0 shown`; returning to All restored the grouped list.
 

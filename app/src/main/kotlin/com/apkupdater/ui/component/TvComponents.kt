@@ -21,6 +21,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.getValue
@@ -41,7 +47,6 @@ import com.apkupdater.data.ui.AppInstalled
 import com.apkupdater.data.ui.AppUpdate
 import com.apkupdater.data.ui.Link
 import com.apkupdater.util.getAppName
-import com.apkupdater.util.to2f
 import com.apkupdater.util.toAnnotatedString
 
 
@@ -86,10 +91,9 @@ fun TvInstallButton(
     var expanded by remember { mutableStateOf(false) }
     val candidates = alternatives.latestPerSource().filter { it.link != Link.Empty || it.sourceUrl.isNotBlank() }
     val installing = alternatives.firstOrNull { it.isInstalling }
-    ElevatedButton(
-        enabled = candidates.isNotEmpty(),
+    Button(
+        enabled = installing != null || candidates.isNotEmpty(),
         modifier = Modifier
-            .padding(bottom = 8.dp)
             .widthIn(min = 64.dp),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         onClick = {
@@ -98,11 +102,9 @@ fun TvInstallButton(
         }
     ) {
         if (installing != null) {
-            if (installing.total != 0L && installing.progress != 0L) {
-                val p = (installing.progress.toFloat() / installing.total) * 100f
-                Text("${p.to2f()}%", maxLines = 1)
-            } else {
-                CircularProgressIndicator(Modifier.size(24.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(16.dp), color = LocalContentColor.current, strokeWidth = 2.dp)
+                Text(stringResource(R.string.cancel_download_action), maxLines = 1)
             }
         } else {
             Row(
@@ -226,22 +228,17 @@ fun TvOpenSourceButton(
     var expanded by remember { mutableStateOf(false) }
     val candidates = alternatives.latestPerSource()
     val sources = candidates.filter { it.sourceUrl.isNotBlank() }
-    ElevatedButton(
-        modifier = Modifier.padding(bottom = 8.dp),
+    TextButton(
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         enabled = sources.isNotEmpty(),
-        onClick = {
-            if (sources.size == 1) onOpenSource(sources.first()) else expanded = true
-        }
+        onClick = { expanded = true }
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            (sources.ifEmpty { candidates }).take(1).forEach { update ->
-                SourceIcon(update.source, Modifier.size(20.dp))
-            }
             Text(stringResource(R.string.open_source))
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null, Modifier.size(20.dp))
         }
     }
     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -257,6 +254,21 @@ fun TvOpenSourceButton(
 
 private fun List<AppUpdate>.latestPerSource() =
     groupBy { it.source.name }.values.map { it.maxBy(AppUpdate::versionCode) }
+
+@Composable
+private fun TvDownloadProgress(update: AppUpdate) {
+    Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp)) {
+        val fraction = if (update.total > 0) (update.progress.toFloat() / update.total).coerceIn(0f, 1f) else null
+        Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(stringResource(if (fraction == 1f) R.string.preparing_installation else R.string.downloading_progress),
+                style = MaterialTheme.typography.labelMedium)
+            Text(if (fraction == null) update.source.name else "${update.source.name} · ${(fraction * 100).toInt()}%",
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if (fraction == null) LinearProgressIndicator(Modifier.fillMaxWidth())
+        else LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth())
+    }
+}
 
 @Composable
 private fun TvUpdateMenu(
@@ -312,14 +324,15 @@ fun TvUpdateItem(
         TvCommonItem(app.packageName, app.name, app.version, app.oldVersion, app.versionCode, app.oldVersionCode)
         WhatsNew(app.whatsNew)
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             verticalAlignment = Alignment.CenterVertically
         ) {
             TvOpenSourceButton(app, alternatives, onOpenSource)
             TvInstallButton(app, alternatives, onInstall, onCancel, onOpenSource)
             TvUpdateMenu(app, alternatives, onIgnoreApp, onIgnoreAppFromSource, onIgnoreVersion, onIgnoreVersionFromSource)
         }
+        alternatives.firstOrNull { it.isInstalling }?.let { TvDownloadProgress(it) }
     }
 }
 
@@ -340,6 +353,7 @@ fun TvSearchItem(
                 TvInstallButton(app, listOf(app), { onInstall(it.packageName) }, onCancel, onOpenSource)
             }
         }
+        if (app.isInstalling) TvDownloadProgress(app)
     }
 }
 

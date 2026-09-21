@@ -3,6 +3,7 @@ package com.apkupdater
 import android.net.Uri
 import android.util.Log
 import com.apkupdater.data.ui.AppUpdate
+import com.apkupdater.data.ui.preserveActiveDownloads
 import com.apkupdater.data.ui.GitHubSource
 import com.apkupdater.data.ui.PlaySource
 import com.apkupdater.data.ui.toCachedUpdate
@@ -41,6 +42,18 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 @RunWith(AndroidJUnit4::class)
 class ExampleInstrumentedTest {
+    @Test
+    fun refreshMergesActiveProgressWithoutRestoringFinishedDownloads() {
+        val active = update("app.active", 2).copy(isInstalling = true, total = 100, progress = 45)
+        val fresh = active.copy(isInstalling = false, total = 0, progress = 0, whatsNew = "Fresh metadata")
+        val merged = listOf(fresh).preserveActiveDownloads(listOf(active)).single()
+        assertTrue(merged.isInstalling)
+        assertEquals(45L, merged.progress)
+        assertEquals(100L, merged.total)
+        assertEquals("Fresh metadata", merged.whatsNew)
+        assertEquals(listOf(active), emptyList<AppUpdate>().preserveActiveDownloads(listOf(active)))
+        assertTrue(emptyList<AppUpdate>().preserveActiveDownloads(listOf(active.copy(isInstalling = false))).isEmpty())
+    }
     @Test
     fun installerRejectsWrongPackageAndInvalidApkBeforeCreatingSession() = kotlinx.coroutines.runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext

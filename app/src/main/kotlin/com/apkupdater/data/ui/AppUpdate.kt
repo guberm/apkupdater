@@ -22,6 +22,14 @@ data class AppUpdate(
 
 fun List<AppUpdate>.indexOf(id: Int) = indexOfFirst { it.id == id }
 
+fun List<AppUpdate>.preserveActiveDownloads(previous: List<AppUpdate>): List<AppUpdate> {
+	val active = previous.filter { it.isInstalling }.associateBy { it.id }
+	val incomingIds = map { it.id }.toSet()
+	return map { update ->
+		active[update.id]?.let { update.copy(isInstalling = true, progress = it.progress, total = it.total) } ?: update
+	} + active.values.filter { it.id !in incomingIds }
+}
+
 fun MutableList<AppUpdate>.setIsInstalling(id: Int, b: Boolean): List<AppUpdate> {
 	val index = this.indexOf(id)
 	if (index != -1) {

@@ -9,6 +9,7 @@ import com.apkupdater.data.ui.SearchUiState
 import com.apkupdater.data.ui.removeId
 import com.apkupdater.data.ui.setIsInstalling
 import com.apkupdater.data.ui.setProgress
+import com.apkupdater.data.ui.preserveActiveDownloads
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.repository.SearchRepository
 import com.apkupdater.util.Badger
@@ -22,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 
@@ -38,13 +40,16 @@ class SearchViewModel(
 ) : InstallViewModel(downloader2, installer, prefs, snackBar, stringer, installLog) {
 
     private val mutex = Mutex()
+    private val searchMutex = Mutex()
     private val state = MutableStateFlow<SearchUiState>(SearchUiState.Success(emptyList()))
     private var job: Job? = null
 
     init {
         subscribeToInstallStatus()
         subscribeToInstallProgress { progress ->
-            state.value = SearchUiState.Success(state.value.mutableUpdates().setProgress(progress))
+            state.update { current ->
+                if (current.updates().any { it.id == progress.id }) SearchUiState.Success(current.mutableUpdates().setProgress(progress)) else current
+            }
         }
     }
 
@@ -55,41 +60,40 @@ class SearchViewModel(
         job = searchJob(text)
     }
 
-    private fun searchJob(text: String) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
-        state.value = SearchUiState.Loading
+    private fun searchJob(text: String) = viewModelScope.launchWithMutex(searchMutex, Dispatchers.IO) {
+        state.update { if (it.updates().any { app -> app.isInstalling }) it else SearchUiState.Loading }
         badger.changeSearchBadge("")
         searchRepository.search(text).collect {
             it.onSuccess { apps ->
-                state.value = SearchUiState.Success(apps)
+                state.update { SearchUiState.Success(apps.preserveActiveDownloads(it.updates())) }
                 badger.changeSearchBadge(apps.size.toString())
             }.onFailure {
                 badger.changeSearchBadge("!")
-                state.value = SearchUiState.Error
+                state.update { if (it.updates().any { app -> app.isInstalling }) it else SearchUiState.Error }
             }
         }
     }
 
     public override fun cancelInstall(id: Int) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
         downloader2.cancelDownload(id)
-        state.value = SearchUiState.Success(state.value.mutableUpdates().setIsInstalling(id, false))
+        state.update { SearchUiState.Success(it.mutableUpdates().setIsInstalling(id, false)) }
         installer.finish()
     }
 
     override fun finishInstall(id: Int) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
-        val updates = state.value.mutableUpdates().removeId(id)
-        state.value = SearchUiState.Success(updates)
-        badger.changeSearchBadge(updates.size.toString())
+        state.update { SearchUiState.Success(it.mutableUpdates().removeId(id)) }
+        badger.changeSearchBadge(state.value.updates().size.toString())
         installer.finish()
     }
 
     override fun downloadAndRootInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
-        state.value = SearchUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
+        state.update { SearchUiState.Success(it.mutableUpdates().setIsInstalling(update.id, true)) }
         downloadAndRootInstall(update.id, update.packageName, update.link)
     }
 
     override fun downloadAndInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
         if(installer.checkPermission()) {
-            state.value = SearchUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
+            state.update { SearchUiState.Success(it.mutableUpdates().setIsInstalling(update.id, true)) }
             downloadAndInstall(update.id, update.packageName, update.link)
         }
     }

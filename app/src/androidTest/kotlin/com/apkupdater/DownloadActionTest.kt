@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.apkupdater.data.ui.AppUpdate
 import com.apkupdater.data.ui.ApkComboSource
 import com.apkupdater.data.ui.Link
+import com.apkupdater.data.ui.preserveActiveDownloads
 import com.apkupdater.ui.component.TvUpdateItem
 import com.apkupdater.ui.component.TvSearchItem
 import org.junit.Assert.assertEquals
@@ -29,11 +30,16 @@ class DownloadActionTest {
     )
 
     @Test fun apkMirrorLogoContrastsWithItsBackground() {
+        val darkTheme = androidx.compose.runtime.mutableStateOf(false)
         compose.setContent {
-            MaterialTheme {
+            MaterialTheme(colorScheme = if (darkTheme.value) androidx.compose.material3.darkColorScheme() else androidx.compose.material3.lightColorScheme()) {
+                androidx.compose.material3.Surface {
                 com.apkupdater.ui.component.SourceIcon(com.apkupdater.data.ui.ApkMirrorSource, Modifier.size(48.dp))
+                }
             }
         }
+        for (darkMode in listOf(false, true)) {
+        compose.runOnIdle { darkTheme.value = darkMode }
         val pixels = compose.onNodeWithContentDescription("ApkMirror").captureToImage().toPixelMap()
         var dark = 0
         var light = 0
@@ -43,6 +49,23 @@ class DownloadActionTest {
             if (color.alpha > 0.9f && color.red > 0.8f && color.green > 0.8f && color.blue > 0.8f) light++
         }
         org.junit.Assert.assertTrue("Logo and background must both be visible", dark > pixels.width && light > pixels.width)
+        }
+    }
+
+    @Test fun refreshPreservesVisibleDownloadProgressUntilCancellation() {
+        val active = update.copy(link = Link.Url("https://example.com/app.apk"), isInstalling = true, total = 100L, progress = 45L)
+        val items = androidx.compose.runtime.mutableStateOf(listOf(active))
+        var cancelled = false
+        compose.setContent {
+            MaterialTheme { TvUpdateItem(items.value.first(), items.value, onCancel = { cancelled = true }) }
+        }
+        compose.onNodeWithText("Downloading").assertIsDisplayed()
+        compose.runOnIdle { items.value = listOf(update).preserveActiveDownloads(items.value) }
+        compose.onNodeWithText("APKCombo · 45%").assertIsDisplayed()
+        compose.runOnIdle { items.value = emptyList<AppUpdate>().preserveActiveDownloads(items.value) }
+        compose.onNodeWithText("Downloading").assertIsDisplayed()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.runOnIdle { assertEquals(true, cancelled) }
     }
 
     @Test fun sourceOnlyUpdateHasVisibleWorkingDownloadAction() {
@@ -53,6 +76,17 @@ class DownloadActionTest {
         compose.onNodeWithText("Download").assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(null, opened) }
         compose.onNodeWithText("APKCombo · 2 · Website").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(update, opened) }
+    }
+
+    @Test fun singleSourceButtonShowsSourceBeforeOpeningWebsite() {
+        var opened: AppUpdate? = null
+        compose.setContent {
+            MaterialTheme { TvUpdateItem(update, onOpenSource = { opened = it }) }
+        }
+        compose.onNodeWithText("Source").performClick()
+        compose.runOnIdle { assertEquals(null, opened) }
+        compose.onNodeWithText("APKCombo · 2").assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(update, opened) }
     }
 
