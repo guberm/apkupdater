@@ -6,6 +6,11 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import com.apkupdater.data.ui.AppUpdate
 import com.apkupdater.data.ui.ApkComboSource
 import com.apkupdater.data.ui.Link
@@ -22,6 +27,23 @@ class DownloadActionTest {
         "Example", "com.example", "2", "1", 2, 1, ApkComboSource,
         sourceUrl = "https://apkcombo.com/example/com.example/"
     )
+
+    @Test fun apkMirrorLogoContrastsWithItsBackground() {
+        compose.setContent {
+            MaterialTheme {
+                com.apkupdater.ui.component.SourceIcon(com.apkupdater.data.ui.ApkMirrorSource, Modifier.size(48.dp))
+            }
+        }
+        val pixels = compose.onNodeWithContentDescription("ApkMirror").captureToImage().toPixelMap()
+        var dark = 0
+        var light = 0
+        for (y in 0 until pixels.height) for (x in 0 until pixels.width) {
+            val color = pixels[x, y]
+            if (color.alpha > 0.9f && color.red < 0.2f && color.green < 0.2f && color.blue < 0.2f) dark++
+            if (color.alpha > 0.9f && color.red > 0.8f && color.green > 0.8f && color.blue > 0.8f) light++
+        }
+        org.junit.Assert.assertTrue("Logo and background must both be visible", dark > pixels.width && light > pixels.width)
+    }
 
     @Test fun sourceOnlyUpdateHasVisibleWorkingDownloadAction() {
         var opened: AppUpdate? = null

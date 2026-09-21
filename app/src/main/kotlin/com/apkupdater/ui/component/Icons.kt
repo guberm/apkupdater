@@ -82,7 +82,7 @@ fun SourceIcon(source: Source, modifier: Modifier = Modifier) = Icon(
     modifier
         .background(Color.White, CircleShape)
         .padding(3.dp),
-    tint = Color.Unspecified
+    tint = if (source.resourceId == R.drawable.ic_apkmirror) Color.Black else Color.Unspecified
 )
 
 @Composable
