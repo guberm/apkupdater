@@ -48,6 +48,7 @@ class Prefs(
 	val ignoreSameVersion = boolean("ignoreSameVersion", defValue = false, backed = true)
 	val apkMirrorArch = int("apkMirrorArch", defValue = 0, backed = true)
 	val cachedUpdateSources = json("cachedUpdateSources", emptyList<CachedSourceResult>(), true)
+	val githubDiagnostics = json("githubDiagnostics", emptyList<com.apkupdater.data.github.GitHubScanReport>(), true)
 	val refreshOnWifiOnly = boolean("refreshOnWifiOnly", defValue = false, backed = true)
 	val refreshWhileCharging = boolean("refreshWhileCharging", defValue = false, backed = true)
 	val customFdroidRepos = json("customFdroidRepos", emptyList<FdroidRepo>(), true)

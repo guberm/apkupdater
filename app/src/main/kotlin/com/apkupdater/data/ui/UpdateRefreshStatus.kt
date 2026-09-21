@@ -5,6 +5,7 @@ import android.net.Uri
 enum class SourceStatusState {
     Loading,
     Success,
+    Partial,
     Cached,
     Failed,
     Skipped
@@ -26,7 +27,8 @@ data class UpdatesRefreshStatus(
     val lastRefreshAt: Long = 0L
 ) {
     val failedSources: Set<String>
-        get() = sourceStatuses.filter { it.state == SourceStatusState.Failed }.mapTo(mutableSetOf(), SourceStatus::name)
+        get() = sourceStatuses.filter { it.state == SourceStatusState.Failed || it.state == SourceStatusState.Partial }
+            .mapTo(mutableSetOf(), SourceStatus::name)
 }
 
 data class CachedUpdate(

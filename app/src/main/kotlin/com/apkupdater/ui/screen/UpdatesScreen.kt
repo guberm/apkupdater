@@ -1,6 +1,7 @@
 package com.apkupdater.ui.screen
 
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.TopAppBar
@@ -29,6 +31,9 @@ import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
@@ -39,6 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.apkupdater.R
 import com.apkupdater.data.ui.AppUpdate
 import com.apkupdater.data.ui.SourceStatusState
+import com.apkupdater.data.ui.UpdatesRefreshStatus
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.ui.component.DefaultErrorScreen
 import com.apkupdater.ui.component.DownloadIcon
@@ -201,9 +207,17 @@ fun UpdatesScreenSuccess(
 @Composable
 private fun RefreshStatusPanel(viewModel: UpdatesViewModel, displayedCount: Int = 0) {
 	val status = viewModel.refreshStatus.collectAsStateWithLifecycle().value
+	RefreshStatusPanel(status, displayedCount, viewModel::retryFailedSources)
+}
+
+@Composable
+internal fun RefreshStatusPanel(status: UpdatesRefreshStatus, displayedCount: Int = 0, onRetry: () -> Unit = {}) {
 	if (!status.isRefreshing && status.sourceStatuses.isEmpty()) return
+	var showDetails by remember { mutableStateOf(false) }
 
 	val failed = status.sourceStatuses.filter { it.state == SourceStatusState.Failed }
+	val partial = status.sourceStatuses.filter { it.state == SourceStatusState.Partial }
+	val issues = status.sourceStatuses.filter { it.name in status.failedSources }
 	val cached = status.sourceStatuses.filter { it.state == SourceStatusState.Cached }
 	val checked = status.sourceStatuses.count {
 		it.state == SourceStatusState.Success || it.state == SourceStatusState.Cached
@@ -231,6 +245,10 @@ private fun RefreshStatusPanel(viewModel: UpdatesViewModel, displayedCount: Int 
 			}
 			Column(Modifier.weight(1f)) {
 				Text(summary, style = MaterialTheme.typography.titleSmall)
+				if (partial.isNotEmpty()) {
+					Text(stringResource(R.string.refresh_status_partial_sources, partial.joinToString { it.name }),
+						style = MaterialTheme.typography.bodySmall)
+				}
 				if (failed.isNotEmpty()) {
 					Text(
 						stringResource(R.string.refresh_status_failed_sources, failed.joinToString { it.name }),
@@ -254,13 +272,30 @@ private fun RefreshStatusPanel(viewModel: UpdatesViewModel, displayedCount: Int 
 					)
 				}
 			}
-			if (failed.isNotEmpty() && !status.isRefreshing) {
-				TextButton(onClick = viewModel::retryFailedSources) {
+		}
+		if (issues.isNotEmpty()) {
+			Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+				TextButton(onClick = { showDetails = true }) { Text(stringResource(R.string.refresh_status_details)) }
+				if (!status.isRefreshing) TextButton(onClick = onRetry) {
 					Text(stringResource(R.string.retry_failed_sources))
 				}
 			}
 		}
 	}
+	if (showDetails) AlertDialog(
+		onDismissRequest = { showDetails = false },
+		title = { Text(stringResource(R.string.refresh_status_details)) },
+		text = {
+			Column(Modifier.verticalScroll(rememberScrollState())) {
+				issues.forEach {
+					Text(it.name, style = MaterialTheme.typography.titleSmall)
+					Text(it.detail, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 12.dp))
+				}
+				Text(stringResource(R.string.refresh_status_export_hint), style = MaterialTheme.typography.bodySmall)
+			}
+		},
+		confirmButton = { TextButton(onClick = { showDetails = false }) { Text(stringResource(android.R.string.ok)) } }
+	)
 }
 
 @Composable

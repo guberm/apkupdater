@@ -8,6 +8,11 @@ import com.apkupdater.BuildConfig
 import com.apkupdater.data.github.GitHubApps
 import com.apkupdater.data.github.GitHubRelease
 import com.apkupdater.data.github.GitHubReleaseAsset
+import com.apkupdater.data.github.GitHubFailure
+import com.apkupdater.data.github.GitHubRepositoryException
+import com.apkupdater.data.github.GitHubScanException
+import com.apkupdater.data.github.GitHubScanReport
+import com.apkupdater.data.github.gitHubFailure
 import com.apkupdater.data.ui.AppInstalled
 import com.apkupdater.data.ui.AppUpdate
 import com.apkupdater.data.ui.GitHubSource
@@ -38,7 +43,8 @@ class GitHubRepository(
     private val requestSlots = Semaphore(4)
 
     suspend fun updates(apps: List<AppInstalled>) = flow {
-        val checks = mutableListOf(selfCheck())
+        val checks = mutableListOf<Flow<List<AppUpdate>>>()
+        if (BuildConfig.APPLICATION_ID == "com.guberdev.apkupdater") checks.add(selfCheck())
 
         GitHubApps.forEach { app ->
             apps.find { it.packageName == app.packageName }?.let {
@@ -46,7 +52,7 @@ class GitHubRepository(
             }
         }
 
-        combineChecks(checks).collect { emit(it) }
+        combineChecks(checks, "Updates").collect { emit(it) }
     }.catch {
         Log.e("GitHubRepository", "Error fetching releases.", it)
         throw it
@@ -66,7 +72,7 @@ class GitHubRepository(
         } else {
             var hasResults = false
             var failure: Throwable? = null
-            combineChecks(checks).catch {
+            combineChecks(checks, "Search").catch {
                 if (it is CancellationException) throw it
                 Log.e("GitHubRepository", "Incomplete search.", it)
                 failure = it
@@ -111,8 +117,9 @@ class GitHubRepository(
             emit(listOf())
         }
     }.retryTransiently().catch {
+        if (it is CancellationException) throw it
         Log.e("GitHubRepository", "Error checking self-update.", it)
-        throw it
+        throw GitHubRepositoryException(gitHubFailure("guberm/apkupdater", it), it)
     }
 
     private fun checkApp(
@@ -156,8 +163,9 @@ class GitHubRepository(
             emit(emptyList())
         }
     }.retryTransiently().catch {
+        if (it is CancellationException) throw it
         Log.e("GitHubRepository", "Error fetching releases for $packageName.", it)
-        throw it
+        throw GitHubRepositoryException(gitHubFailure("$user/$repo", it), it)
     }
 
     private fun filterPreRelease(release: GitHubRelease) = when {
@@ -166,21 +174,35 @@ class GitHubRepository(
     }
 
     // Emit healthy repositories as they finish, then report an incomplete scan without losing them.
-    private fun combineChecks(checks: List<Flow<List<AppUpdate>>>) = flow {
-        var failures = emptyList<Throwable>()
-        checks.map { check ->
-            check.map { Result.success(it) }
-                .onStart { emit(Result.success(emptyList())) }
-                .catch {
-                    if (it is CancellationException) throw it
-                    emit(Result.failure(it))
+    private fun combineChecks(checks: List<Flow<List<AppUpdate>>>, operation: String) = flow {
+        var failures = emptyList<GitHubFailure>()
+        var successful = 0
+        fun report() = GitHubScanReport(System.currentTimeMillis(), BuildConfig.VERSION_NAME,
+            operation, checks.size, successful, failures)
+        try {
+            if (checks.isEmpty()) emit(emptyList())
+            else checks.map { check ->
+                check.map<List<AppUpdate>, Result<List<AppUpdate>>?> { Result.success(it) }
+                    .onStart { emit(null) }
+                    .catch {
+                        if (it is CancellationException) throw it
+                        emit(Result.failure(it))
+                    }
+            }.combine { results ->
+                successful = results.count { it?.isSuccess == true }
+                failures = results.mapNotNull { result -> result?.exceptionOrNull()?.let {
+                    (it as? GitHubRepositoryException)?.failure ?: gitHubFailure("Unknown repository", it)
+                } }
+                emit(results.flatMap { it?.getOrDefault(emptyList()).orEmpty() })
+            }.collect()
+            if (failures.isNotEmpty()) throw GitHubScanException(report())
+        } finally {
+            // Keep completed and interrupted scans independently of Android's rolling logcat buffer.
+            runCatching {
+                synchronized(prefs) {
+                    prefs.githubDiagnostics.put((prefs.githubDiagnostics.get() + report()).takeLast(20))
                 }
-        }.combine { results ->
-            failures = results.mapNotNull { it.exceptionOrNull() }
-            emit(results.flatMap { it.getOrDefault(emptyList()) })
-        }.collect()
-        if (failures.isNotEmpty()) {
-            throw IOException("GitHub: ${failures.size} repository check(s) failed", failures.first())
+            }.onFailure { Log.e("GitHubRepository", "Unable to persist scan diagnostics", it) }
         }
     }
 

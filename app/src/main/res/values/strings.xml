@@ -137,4 +137,7 @@
         <item quantity="other">Found %1$d updates.</item>
     </plurals>
 
+    <string name="refresh_status_partial_sources">Partial: %1$s — some checks failed</string>
+    <string name="refresh_status_details">Check details</string>
+    <string name="refresh_status_export_hint">Recent GitHub diagnostics are saved. Export them from Settings → Send App Logs.</string>
 </resources>

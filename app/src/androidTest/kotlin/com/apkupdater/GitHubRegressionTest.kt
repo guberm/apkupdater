@@ -41,6 +41,12 @@ class GitHubRegressionTest {
         GitHubRepository(service, prefs).updates(apps).catch { failure = it }.collect { latest = it }
         assertEquals(listOf("com.beemdevelopment.aegis"), latest.map { it.packageName })
         assertNotNull("Incomplete scan must remain visible as a failure", failure)
+        assertTrue("Failure must identify the repository", failure!!.message.orEmpty().contains("AdAway/AdAway"))
+        assertTrue("Failure must include the HTTP status", failure!!.message.orEmpty().contains("HTTP 404"))
+        val saved = Prefs(org.koin.core.context.GlobalContext.get().get()).githubDiagnostics.get().last()
+        assertEquals(com.apkupdater.data.ui.SourceStatusState.Partial, saved.state)
+        assertEquals("AdAway/AdAway", saved.failures.single().repository)
+        assertTrue(com.apkupdater.util.readAppLogs(listOf(saved)).contains("AdAway/AdAway: HTTP 404"))
         assertEquals(1, calls["AdAway"])
         assertEquals(1, calls["Aegis"])
     }
@@ -89,6 +95,29 @@ class GitHubRegressionTest {
 
     private fun service(answer: (String) -> List<GitHubRelease>) = object : GitHubService {
         override suspend fun getReleases(user: String, repo: String) = answer(repo)
+    }
+
+    @Test fun noUpdatesFromHealthyRepositoryStillMeansPartialCheckSuccess() = runBlocking {
+        val service = service { repo ->
+            if (repo == "AdAway") throw HttpException(Response.error<String>(404, "missing".toResponseBody()))
+            emptyList()
+        }
+        var error: Throwable? = null
+        GitHubRepository(service, prefs).updates(apps).catch { error = it }.collect()
+        val report = (error as com.apkupdater.data.github.GitHubScanException).report
+        assertEquals(1, report.successfulChecks)
+        assertEquals(2, report.totalChecks)
+        assertEquals(com.apkupdater.data.ui.SourceStatusState.Partial, report.state)
+    }
+
+    @Test fun allFailuresAreNotPartialAndHistoryIsBounded() = runBlocking {
+        val service = service { throw HttpException(Response.error<String>(404, "missing".toResponseBody())) }
+        repeat(22) { GitHubRepository(service, prefs).updates(apps).catch {}.collect() }
+        val saved = prefs.githubDiagnostics.get()
+        assertEquals(20, saved.size)
+        assertEquals(0, saved.last().successfulChecks)
+        assertEquals(2, saved.last().failures.size)
+        assertEquals(com.apkupdater.data.ui.SourceStatusState.Failed, saved.last().state)
     }
 
     private fun releases() = listOf(GitHubRelease(

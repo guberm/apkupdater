@@ -3,6 +3,7 @@ package com.apkupdater.repository
 import android.util.Log
 import java.io.IOException
 import com.apkupdater.data.ui.AppUpdate
+import com.apkupdater.data.github.GitHubScanException
 import com.apkupdater.data.ui.AppInstalled
 import com.apkupdater.data.ui.CachedSourceResult
 import com.apkupdater.data.ui.FdroidRepo
@@ -118,9 +119,9 @@ class UpdatesRepository(
                                 latestResults[name] = available
                                 setSourceStatus(
                                     name,
-                                    SourceStatusState.Failed,
+                                    (error as? GitHubScanException)?.report?.state ?: SourceStatusState.Failed,
                                     available.size,
-                                    error.javaClass.simpleName
+                                    (error as? GitHubScanException)?.report?.description() ?: error.javaClass.simpleName
                                 )
                                 Log.e("UpdatesRepository", "refresh=$refreshId error source=$name", error)
                                 emit(available)

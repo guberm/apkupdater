@@ -24,6 +24,24 @@ import org.junit.Test
 class DownloadActionTest {
     @get:Rule val compose = createComposeRule()
 
+    @Test fun partialSourceShowsDetailsAndRetryWithoutClaimingTotalFailure() {
+        var retried = false
+        val detail = "1/2 repositories checked successfully; 1 failed\nAdAway/AdAway: HTTP 404 — Repository not found"
+        val status = com.apkupdater.data.ui.UpdatesRefreshStatus(enabledSourceCount = 1,
+            sourceStatuses = listOf(com.apkupdater.data.ui.SourceStatus("GitHub",
+                com.apkupdater.data.ui.SourceStatusState.Partial, 0, detail)))
+        compose.setContent { MaterialTheme {
+            com.apkupdater.ui.screen.RefreshStatusPanel(status, onRetry = { retried = true })
+        } }
+        compose.onNodeWithText("Partial: GitHub — some checks failed").assertIsDisplayed()
+        compose.onNodeWithText("Failed: GitHub").assertDoesNotExist()
+        compose.onNodeWithText("Check details").performClick()
+        compose.onNodeWithText(detail).assertIsDisplayed()
+        compose.onNodeWithText("OK").performClick()
+        compose.onNodeWithText("Retry failed").performClick()
+        compose.runOnIdle { assertEquals(true, retried) }
+    }
+
     private val update = AppUpdate(
         "Example", "com.example", "2", "1", 2, 1, ApkComboSource,
         sourceUrl = "https://apkcombo.com/example/com.example/"

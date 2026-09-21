@@ -53,8 +53,8 @@ android {
         applicationId = "com.guberdev.apkupdater" + System.getenv("BUILD_TAG").orEmpty()
         minSdk = 23
         targetSdk = 36
-        versionCode = if (buildNumber.isEmpty()) 85 else buildNumber.toInt()
-        versionName = if (buildNumber.isEmpty()) "3.1.26" else "0.0.$buildNumber"
+        versionCode = if (buildNumber.isEmpty()) 86 else buildNumber.toInt()
+        versionName = if (buildNumber.isEmpty()) "3.1.27" else "0.0.$buildNumber"
         buildConfigField("boolean", "SENSITIVE_LOGGING", sensitiveLogging.toString())
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true

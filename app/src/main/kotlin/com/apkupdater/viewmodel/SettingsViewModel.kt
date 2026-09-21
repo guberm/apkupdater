@@ -238,13 +238,13 @@ class SettingsViewModel(
 	}
 
 	fun copyAppLogs() = viewModelScope.launch(Dispatchers.IO) {
-		clipboard.copy(readAppLogs(), "App Logs")
+		clipboard.copy(readAppLogs(prefs.githubDiagnostics.get()), "App Logs")
 	}
 
 	fun sendAppLogs(context: Context) = viewModelScope.launch {
 		runCatching {
 			val intent = withContext(Dispatchers.IO) {
-				val file = writeAppLogs(File(context.cacheDir, "shared"), readAppLogs())
+				val file = writeAppLogs(File(context.cacheDir, "shared"), readAppLogs(prefs.githubDiagnostics.get()))
 				val uri = FileProvider.getUriForFile(
 					context,
 					"${BuildConfig.APPLICATION_ID}.fileprovider",
