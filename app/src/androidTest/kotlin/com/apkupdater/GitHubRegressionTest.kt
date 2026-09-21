@@ -15,6 +15,7 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.Before
 import org.junit.runner.RunWith
 import retrofit2.HttpException
 import retrofit2.Response
@@ -28,6 +29,44 @@ class GitHubRegressionTest {
         AppInstalled("AdAway", "org.adaway", "1.0", 1),
         AppInstalled("Aegis", "com.beemdevelopment.aegis", "1.0", 1)
     )
+
+    @Before fun clearRequestState() {
+        prefs.githubReleaseCache.put(emptyList())
+        prefs.githubRetryAt.put(0L)
+        prefs.githubResumeUntil.put(0L)
+    }
+
+    @Test fun quotaPauseAndResumeSurviveRepositoryRecreation() = runBlocking {
+        var time = 1_800_000_000_000L
+        val calls = mutableListOf<String>()
+        var blocked = true
+        val service = service { repo ->
+            calls.add(repo)
+            if (repo == "Aegis" && blocked) {
+                val raw = okhttp3.Response.Builder().request(okhttp3.Request.Builder().url("https://api.github.com").build())
+                    .protocol(okhttp3.Protocol.HTTP_1_1).code(403).message("Forbidden")
+                    .header("X-RateLimit-Remaining", "0")
+                    .header("X-RateLimit-Reset", ((time + 3_600_000) / 1000).toString()).build()
+                throw HttpException(Response.error<String>("quota".toResponseBody(), raw))
+            }
+            releases()
+        }
+        // Seed a healthy repository before the quota is exhausted.
+        GitHubRepository(service, prefs) { time }.updates(apps.take(1)).collect()
+        GitHubRepository(service, prefs) { time }.updates(apps).catch {}.collect()
+        assertEquals(listOf("AdAway", "Aegis"), calls)
+        var latest = emptyList<AppUpdate>()
+        GitHubRepository(service, Prefs(org.koin.core.context.GlobalContext.get().get())) { time }
+            .updates(apps).catch {}.collect { latest = it }
+        assertEquals(2, calls.size)
+        assertEquals(listOf("org.adaway"), latest.map { it.packageName })
+        time += 3_601_000
+        blocked = false
+        GitHubRepository(service, prefs) { time }.updates(apps).collect { latest = it }
+        assertEquals(listOf("AdAway", "Aegis", "Aegis"), calls)
+        assertEquals(2, latest.size)
+        assertEquals(0L, prefs.githubResumeUntil.get())
+    }
 
     @Test fun missingRepositoryDoesNotDiscardHealthyUpdatesOrRepeatRequests() = runBlocking {
         val calls = ConcurrentHashMap<String, Int>()
@@ -49,6 +88,54 @@ class GitHubRegressionTest {
         assertTrue(com.apkupdater.util.readAppLogs(listOf(saved)).contains("AdAway/AdAway: HTTP 404"))
         assertEquals(1, calls["AdAway"])
         assertEquals(1, calls["Aegis"])
+    }
+
+    @Test fun eightySixRepositoriesMakeProgressAcrossQuotaWindows() = runBlocking {
+        var time = 1_800_000_000_000L
+        var count = 0
+        var reset = false
+        val manyApps = com.apkupdater.data.github.GitHubApps.distinctBy { it.packageName }
+            .distinctBy { "${it.user}/${it.repo}" }.take(86)
+            .map { AppInstalled(it.repo, it.packageName, "1.0", 1) }
+        val service = service {
+            count++
+            if (!reset && count > 60) {
+                val raw = okhttp3.Response.Builder().request(okhttp3.Request.Builder().url("https://api.github.com").build())
+                    .protocol(okhttp3.Protocol.HTTP_1_1).code(403).message("Forbidden")
+                    .header("X-RateLimit-Remaining", "0")
+                    .header("X-RateLimit-Reset", ((time + 3_600_000) / 1000).toString()).build()
+                throw HttpException(Response.error<String>("quota".toResponseBody(), raw))
+            }
+            releases()
+        }
+        GitHubRepository(service, prefs) { time }.updates(manyApps).catch {}.collect()
+        assertEquals(61, count)
+        assertEquals(60, prefs.githubDiagnostics.get().last().successfulChecks)
+        assertTrue(prefs.githubDiagnostics.get().last().description().contains("deferred until quota reset"))
+        GitHubRepository(service, prefs) { time }.updates(manyApps).catch {}.collect()
+        assertEquals("No network requests during cooldown", 61, count)
+        time += 3_601_000
+        reset = true
+        GitHubRepository(service, prefs) { time }.updates(manyApps).collect()
+        val report = prefs.githubDiagnostics.get().last()
+        assertEquals(report.totalChecks, report.successfulChecks)
+        assertEquals("Only unfinished checks should use the new quota", report.totalChecks + 1, count)
+    }
+
+    @Test fun cacheExpiresAndCachedReleasesUseCurrentInstalledVersion() = runBlocking {
+        var time = 1_800_000_000_000L
+        var calls = 0
+        val service = service { calls++; releases() }
+        val repository = GitHubRepository(service, prefs) { time }
+        repository.updates(apps.take(1)).collect()
+        var latest = emptyList<AppUpdate>()
+        repository.updates(listOf(AppInstalled("AdAway", "org.adaway", "999.0", 999)))
+            .collect { latest = it }
+        assertEquals(1, calls)
+        assertTrue(latest.isEmpty())
+        time += 15 * 60 * 1000 + 1
+        repository.updates(apps.take(1)).collect()
+        assertEquals(2, calls)
     }
 
     @Test fun transientFailureOnlyRetriesItsOwnRepository() = runBlocking {

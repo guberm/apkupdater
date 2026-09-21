@@ -9,6 +9,7 @@ import com.apkupdater.data.github.GitHubApps
 import com.apkupdater.data.github.GitHubRelease
 import com.apkupdater.data.github.GitHubReleaseAsset
 import com.apkupdater.data.github.GitHubFailure
+import com.apkupdater.data.github.GitHubCachedReleases
 import com.apkupdater.data.github.GitHubRepositoryException
 import com.apkupdater.data.github.GitHubScanException
 import com.apkupdater.data.github.GitHubScanReport
@@ -31,16 +32,46 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.IOException
 
 
 class GitHubRepository(
     private val service: GitHubService,
-    private val prefs: Prefs
+    private val prefs: Prefs,
+    private val now: () -> Long = System::currentTimeMillis
 ) {
-    private val requestSlots = Semaphore(4)
+    private val requestLock = Mutex()
+
+    private suspend fun releases(user: String, repo: String): List<GitHubRelease> = requestLock.withLock {
+        val key = "$user/$repo"
+        val time = now()
+        val resuming = prefs.githubResumeUntil.get() > time
+        val cache = prefs.githubReleaseCache.get().filter { time - it.checkedAt in 0 until RESUME_TTL }
+        cache.firstOrNull {
+            it.repository == key && (resuming || time - it.checkedAt < CACHE_TTL)
+        }?.let { return@withLock it.releases }
+        val retryAt = prefs.githubRetryAt.get()
+        if (retryAt > time) throw GitHubRepositoryException(
+            GitHubFailure(key, "GitHub quota paused; check deferred (no request sent)", retryAt = retryAt),
+            IOException("Waiting for GitHub quota reset")
+        )
+        try {
+            val result = service.getReleases(user, repo)
+            prefs.githubReleaseCache.put(cache.filterNot { it.repository == key } + GitHubCachedReleases(key, time, result))
+            result
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            val failure = gitHubFailure(key, error, time)
+            if (failure.reason == "GitHub rate limit reached" || failure.retryAt != null) {
+                // Serialize requests so a quota response stops queued checks before they hit GitHub.
+                prefs.githubRetryAt.put((failure.retryAt ?: (time + 3_600_000)).coerceIn(time + 60_000, time + RESUME_TTL))
+                if (!resuming) prefs.githubResumeUntil.put(time + RESUME_TTL)
+            }
+            throw error
+        }
+    }
 
     suspend fun updates(apps: List<AppInstalled>) = flow {
         val checks = mutableListOf<Flow<List<AppUpdate>>>()
@@ -92,7 +123,7 @@ class GitHubRepository(
             emit(emptyList())
             return@flow
         }
-        val release = requestSlots.withPermit { service.getReleases("guberm", "apkupdater") }
+        val release = releases("guberm", "apkupdater")
             .filter { filterPreRelease(it) }
             .firstOrNull { release -> release.assets.any { it.browser_download_url.endsWith("/com.guberdev.apkupdater-release.apk") } }
         if (release == null) {
@@ -119,7 +150,7 @@ class GitHubRepository(
     }.retryTransiently().catch {
         if (it is CancellationException) throw it
         Log.e("GitHubRepository", "Error checking self-update.", it)
-        throw GitHubRepositoryException(gitHubFailure("guberm/apkupdater", it), it)
+        throw (it as? GitHubRepositoryException ?: GitHubRepositoryException(gitHubFailure("guberm/apkupdater", it, now()), it))
     }
 
     private fun checkApp(
@@ -130,7 +161,7 @@ class GitHubRepository(
         currentVersion: String,
         extra: Regex?
     ) = flow {
-        val r = requestSlots.withPermit { service.getReleases(user, repo) }
+        val r = releases(user, repo)
         val releases = if (packageName == "com.apkupdater.ci") {
             // TODO: Find a better way to do this
             r.filter { it.name.contains("CI-Release-3.x")}
@@ -165,7 +196,7 @@ class GitHubRepository(
     }.retryTransiently().catch {
         if (it is CancellationException) throw it
         Log.e("GitHubRepository", "Error fetching releases for $packageName.", it)
-        throw GitHubRepositoryException(gitHubFailure("$user/$repo", it), it)
+        throw (it as? GitHubRepositoryException ?: GitHubRepositoryException(gitHubFailure("$user/$repo", it, now()), it))
     }
 
     private fun filterPreRelease(release: GitHubRelease) = when {
@@ -196,6 +227,7 @@ class GitHubRepository(
                 emit(results.flatMap { it?.getOrDefault(emptyList()).orEmpty() })
             }.collect()
             if (failures.isNotEmpty()) throw GitHubScanException(report())
+            if (operation == "Updates") prefs.githubResumeUntil.put(0L)
         } finally {
             // Keep completed and interrupted scans independently of Android's rolling logcat buffer.
             runCatching {
@@ -271,6 +303,8 @@ class GitHubRepository(
         INSTALLABLE_PACKAGE_EXTENSIONS.any { browser_download_url.endsWith(it, ignoreCase = true) }
 
     private companion object {
+        const val CACHE_TTL = 15 * 60 * 1000L
+        const val RESUME_TTL = 24 * 60 * 60 * 1000L
         val INSTALLABLE_PACKAGE_EXTENSIONS = listOf(".apk", ".apkm", ".apks", ".xapk")
     }
 

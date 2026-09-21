@@ -28,6 +28,21 @@ This project is a modified fork of [rumboalla/APKUpdater](https://github.com/rum
 
 ## Build
 
+### GitHub quota recovery
+
+GitHub's unauthenticated API quota is shared by the public IP address. If a check reaches the quota,
+APK Updater pauses GitHub requests until the reported reset time. Refreshing during the pause does not
+send more GitHub requests. After reset, the next manual or scheduled refresh continues using saved
+successful responses and requests the missing repositories. There is no dedicated wake-up at reset time.
+
+Successful release responses (including repositories with no updates) are saved for 15 minutes.
+During quota recovery they can be reused for up to 24 hours, including after an app restart. The current
+installed version and release filters are still applied to the saved release data. `Check details` and
+exported logs distinguish deferred checks from HTTP failures. This reduces wasted requests; it does not
+increase GitHub's quota or add GitHub authentication.
+
+### Local build
+
 ```bash
 ./gradlew test lint assembleDebug
 ```

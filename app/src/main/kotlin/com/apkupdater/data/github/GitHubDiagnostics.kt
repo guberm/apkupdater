@@ -8,6 +8,12 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
+data class GitHubCachedReleases(
+    val repository: String,
+    val checkedAt: Long,
+    val releases: List<GitHubRelease>
+)
+
 data class GitHubFailure(
     val repository: String,
     val reason: String,
@@ -34,7 +40,10 @@ data class GitHubScanReport(
     }
 
     fun description(): String = buildString {
-        append("$successfulChecks/$totalChecks repositories checked successfully; ${failures.size} failed")
+        val deferred = failures.count { it.reason.contains("check deferred") }
+        append("$successfulChecks/$totalChecks repositories checked successfully; ${failures.size - deferred} failed")
+        if (deferred > 0) append("; $deferred deferred until quota reset")
+        append("\nSaved responses may be reused for 15 minutes, or up to 24 hours while completing a quota-limited check.")
         val unfinished = totalChecks - successfulChecks - failures.size
         if (unfinished > 0) append("; $unfinished unfinished (scan interrupted)")
         failures.forEach { append("\n${it.description()}") }
@@ -42,7 +51,7 @@ data class GitHubScanReport(
 }
 
 class GitHubRepositoryException(val failure: GitHubFailure, cause: Throwable) :
-    IOException(failure.description(), cause)
+    Exception(failure.description(), cause)
 
 class GitHubScanException(val report: GitHubScanReport) : IOException(report.description())
 
