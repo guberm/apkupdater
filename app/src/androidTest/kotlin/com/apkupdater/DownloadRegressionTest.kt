@@ -47,11 +47,19 @@ class DownloadRegressionTest {
     }
 
     @Test fun cancellationIsNotRetriedOrReportedAsIoFailure() {
+        assertCancellation(43)
+    }
+
+    @Test fun negativeDownloadIdIsCancellable() {
+        assertCancellation(-104364862)
+    }
+
+    private fun assertCancellation(id: Int) {
         var attempts = 0
         withDownloader(body = { attempts++; ByteArray(32_768).toResponseBody() }) { downloader, directory ->
             val result = runCatching {
-                downloader.downloadFile("https://example.com/app.apk", 43) { bytes, _ ->
-                    if (bytes > 0) downloader.cancelDownload(43)
+                downloader.downloadFile("https://example.com/app.apk", id) { bytes, _ ->
+                    if (bytes > 0) downloader.cancelDownload(id)
                 }
             }
             assertTrue(result.exceptionOrNull() is CancellationException)

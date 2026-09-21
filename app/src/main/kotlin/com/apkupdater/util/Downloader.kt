@@ -59,8 +59,8 @@ class Downloader(
     }
 
     /** Downloads [url] to a temp file using the correct client for the URL, returns the file. Retries on transient IO errors. */
-    fun downloadFile(url: String, downloadId: Int = -1, onProgress: ((Long, Long) -> Unit)? = null): File {
-        if (downloadId >= 0) cancelledDownloads.remove(downloadId)
+    fun downloadFile(url: String, downloadId: Int? = null, onProgress: ((Long, Long) -> Unit)? = null): File {
+        if (downloadId != null) cancelledDownloads.remove(downloadId)
         val resolved = resolveDownloadUrl(url)
         val (clientName, c) = downloadClient(resolved.url)
         var lastException: Exception? = null
@@ -68,7 +68,7 @@ class Downloader(
             checkCancelled(downloadId)
             val file = File(dir, randomUUID())
             val call = c.newCall(downloadFileRequest(resolved.url, resolved.referer))
-            if (downloadId >= 0) activeCalls[downloadId] = call
+            if (downloadId != null) activeCalls[downloadId] = call
             Log.d("Downloader", "downloadFile: attempt=${attempt + 1} url=${resolved.url} client=$clientName dest=${file.absolutePath}")
             try {
                 checkCancelled(downloadId)
@@ -110,28 +110,28 @@ class Downloader(
                 Log.e("Downloader", "downloadFile: IOException on attempt ${attempt + 1} url=${resolved.url}", e)
                 lastException = e
             } finally {
-                if (downloadId >= 0) activeCalls.remove(downloadId, call)
+                if (downloadId != null) activeCalls.remove(downloadId, call)
             }
         }
         Log.e("Downloader", "downloadFile: all retries exhausted for url=${resolved.url}")
         throw lastException ?: IOException("Download failed: ${resolved.url}")
     }
 
-    private fun checkCancelled(id: Int) {
-        if (id >= 0 && cancelledDownloads.contains(id)) throw CancellationException("Download cancelled: $id")
+    private fun checkCancelled(id: Int?) {
+        if (id != null && cancelledDownloads.contains(id)) throw CancellationException("Download cancelled: $id")
     }
 
-    fun downloadStream(url: String, downloadId: Int = -1): InputStream? {
+    fun downloadStream(url: String, downloadId: Int? = null): InputStream? {
         val resolved = resolveDownloadUrl(url)
         val (clientName, c) = downloadClient(resolved.url)
-        if (downloadId >= 0) cancelledDownloads.remove(downloadId)
+        if (downloadId != null) cancelledDownloads.remove(downloadId)
 
         repeat(3) { attempt ->
-            if (downloadId >= 0 && cancelledDownloads.contains(downloadId)) {
+            if (downloadId != null && cancelledDownloads.contains(downloadId)) {
                 throw CancellationException("Download cancelled: $downloadId")
             }
             val call = c.newCall(downloadRequest(resolved.url, resolved.referer))
-            if (downloadId >= 0) activeCalls[downloadId] = call
+            if (downloadId != null) activeCalls[downloadId] = call
             Log.d("Downloader", "downloadStream: attempt=${attempt + 1} url=${resolved.url} downloadId=$downloadId client=$clientName")
             try {
                 val response = call.execute()
@@ -144,19 +144,19 @@ class Downloader(
                                 super.close()
                             } finally {
                                 response.close()
-                                if (downloadId >= 0) activeCalls.remove(downloadId, call)
+                                if (downloadId != null) activeCalls.remove(downloadId, call)
                             }
                         }
                     }
                 } else {
                     val code = response.code
                     response.close()
-                    if (downloadId >= 0) activeCalls.remove(downloadId, call)
+                    if (downloadId != null) activeCalls.remove(downloadId, call)
                     Log.e("Downloader", "downloadStream: FAILED code=$code attempt=${attempt + 1} url=${resolved.url}")
                 }
             } catch (error: IOException) {
-                if (downloadId >= 0) activeCalls.remove(downloadId, call)
-                if (downloadId >= 0 && cancelledDownloads.contains(downloadId)) {
+                if (downloadId != null) activeCalls.remove(downloadId, call)
+                if (downloadId != null && cancelledDownloads.contains(downloadId)) {
                     throw CancellationException("Download cancelled: $downloadId", error)
                 }
                 Log.e("Downloader", "downloadStream: IOException attempt=${attempt + 1} url=${resolved.url}", error)
@@ -167,7 +167,7 @@ class Downloader(
     }
 
     /** Downloads [url] into the SAF tree [treeUri] with the given [filename]. Returns the new document URI, or null on failure. */
-    fun downloadToUri(url: String, treeUri: Uri, filename: String, downloadId: Int = -1, onProgress: ((Long, Long) -> Unit)? = null): Uri? = runCatching {
+    fun downloadToUri(url: String, treeUri: Uri, filename: String, downloadId: Int? = null, onProgress: ((Long, Long) -> Unit)? = null): Uri? = runCatching {
         Log.d("Downloader", "downloadToUri: url=$url treeUri=$treeUri filename=$filename")
         val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
         val docUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, treeDocId)

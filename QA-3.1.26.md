@@ -1,4 +1,4 @@
-# 3.1.25 regression verification
+# 3.1.26 regression verification
 
 ## Changes
 
@@ -7,6 +7,7 @@
 - GitHub search respects package-specific asset/flavor filters.
 - Direct APK and bundle installs use the existing temporary-file downloader, with byte progress during network transfer, cancellation, incomplete-file cleanup and retries of interrupted response bodies before installation. Play and custom-directory downloads use the same cancellation ID.
 - A canceled download is not presented as a download failure. Unknown content length remains indeterminate instead of falsely showing 100 percent.
+- Download IDs can be negative because they are hash codes. Cancellation now accepts every ID; only a missing ID disables tracking. A regression test failed on the old sign guard before the fix.
 - Releases are created as drafts. Publish only after testing the exact signed standard APK on the device.
 
 ## Automated retest
@@ -20,7 +21,7 @@ $env:BUILD_NUMBER='86'
 
 The suite covers source parsers, cache restoration, package rejection, UI source selectors, ignore-menu ordering, single-row actions, dark/light source icons and retained progress. New regressions cover isolated GitHub failures, bounded per-repository retries, partial search, HTTP/cancellation retry classification, interrupted body recovery, cancellation cleanup and non-retryable download errors.
 
-Local result: 30 JVM tests and 28 device tests passed (zero failures/skips), with Android lint and debug assembly successful. Device: Pixel 7 Pro, Android 17. Signed-release and live-network checks remain release gates, recorded below in the published release notes.
+The previous candidate passed 30 JVM tests and 28 device tests, but signed-device testing exposed the negative-ID cancellation defect. That candidate (3.1.25) was never published. The fixed candidate passed a fresh complete run: 30 JVM tests and 29 device tests, zero failures/errors/skips. Device: Pixel 7 Pro, Android 17. Final signed-release checks are recorded in the published release notes.
 
 ## Release gate
 
