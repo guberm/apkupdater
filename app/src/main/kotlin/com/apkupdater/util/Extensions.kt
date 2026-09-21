@@ -79,7 +79,8 @@ inline fun <reified T> List<Flow<T>>.combine(crossinline block: suspend (Array<T
 
 fun <T> Flow<T>.retryTransiently() = retryWhen { cause, attempt ->
 		if (cause is CancellationException) false
-		else if (attempt < 2) {
+		else if (attempt < 2 && (cause is java.io.IOException ||
+			(cause is retrofit2.HttpException && (cause.code() == 408 || cause.code() in 500..599)))) {
 			delay(500L * (attempt + 1))
 			true
 		} else false

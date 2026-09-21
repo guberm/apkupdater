@@ -23,12 +23,19 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import java.io.IOException
 
 
 class GitHubRepository(
     private val service: GitHubService,
     private val prefs: Prefs
 ) {
+    private val requestSlots = Semaphore(4)
 
     suspend fun updates(apps: List<AppInstalled>) = flow {
         val checks = mutableListOf(selfCheck())
@@ -39,10 +46,8 @@ class GitHubRepository(
             }
         }
 
-        checks.combine { all ->
-            emit(all.flatMap { it })
-        }.collect()
-    }.retryTransiently().catch {
+        combineChecks(checks).collect { emit(it) }
+    }.catch {
         Log.e("GitHubRepository", "Error fetching releases.", it)
         throw it
     }
@@ -52,19 +57,26 @@ class GitHubRepository(
 
         GitHubApps.forEach { app ->
             if (app.repo.contains(text, true) || app.user.contains(text, true) || app.packageName.contains(text, true)) {
-                checks.add(checkApp(null, app.user, app.repo, app.packageName, "?", null))
+                checks.add(checkApp(null, app.user, app.repo, app.packageName, "?", app.extra))
             }
         }
 
         if (checks.isEmpty()) {
             emit(Result.success(emptyList()))
         } else {
-            checks.combine { all ->
-                val r = all.flatMap { it }
-                emit(Result.success(r))
-            }.collect()
+            var hasResults = false
+            var failure: Throwable? = null
+            combineChecks(checks).catch {
+                if (it is CancellationException) throw it
+                Log.e("GitHubRepository", "Incomplete search.", it)
+                failure = it
+            }.collect {
+                hasResults = it.isNotEmpty()
+                emit(Result.success(it))
+            }
+            if (!hasResults) failure?.let { emit(Result.failure(it)) }
         }
-    }.retryTransiently().catch {
+    }.catch {
         emit(Result.failure(it))
         Log.e("GitHubRepository", "Error searching.", it)
     }
@@ -74,7 +86,7 @@ class GitHubRepository(
             emit(emptyList())
             return@flow
         }
-        val release = service.getReleases("guberm", "apkupdater")
+        val release = requestSlots.withPermit { service.getReleases("guberm", "apkupdater") }
             .filter { filterPreRelease(it) }
             .firstOrNull { release -> release.assets.any { it.browser_download_url.endsWith("/com.guberdev.apkupdater-release.apk") } }
         if (release == null) {
@@ -111,7 +123,7 @@ class GitHubRepository(
         currentVersion: String,
         extra: Regex?
     ) = flow {
-        val r = service.getReleases(user, repo)
+        val r = requestSlots.withPermit { service.getReleases(user, repo) }
         val releases = if (packageName == "com.apkupdater.ci") {
             // TODO: Find a better way to do this
             r.filter { it.name.contains("CI-Release-3.x")}
@@ -151,6 +163,25 @@ class GitHubRepository(
     private fun filterPreRelease(release: GitHubRelease) = when {
         prefs.ignorePreRelease.get() && release.prerelease -> false
         else -> true
+    }
+
+    // Emit healthy repositories as they finish, then report an incomplete scan without losing them.
+    private fun combineChecks(checks: List<Flow<List<AppUpdate>>>) = flow {
+        var failures = emptyList<Throwable>()
+        checks.map { check ->
+            check.map { Result.success(it) }
+                .onStart { emit(Result.success(emptyList())) }
+                .catch {
+                    if (it is CancellationException) throw it
+                    emit(Result.failure(it))
+                }
+        }.combine { results ->
+            failures = results.mapNotNull { it.exceptionOrNull() }
+            emit(results.flatMap { it.getOrDefault(emptyList()) })
+        }.collect()
+        if (failures.isNotEmpty()) {
+            throw IOException("GitHub: ${failures.size} repository check(s) failed", failures.first())
+        }
     }
 
     private fun findApkAsset(assets: List<GitHubReleaseAsset>) = assets

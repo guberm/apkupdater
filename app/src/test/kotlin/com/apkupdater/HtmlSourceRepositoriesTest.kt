@@ -116,10 +116,37 @@ class HtmlSourceRepositoriesTest {
         var attempts = 0
         flow {
             attempts++
-            if (attempts < 3) error("temporary")
+            if (attempts < 3) throw java.io.IOException("temporary")
             emit("ok")
         }.retryTransiently().collect { assertEquals("ok", it) }
 
         assertEquals(3, attempts)
+    }
+
+    @Test
+    fun permanentErrorsAreNotRetried() = runBlocking {
+        var attempts = 0
+        val result = runCatching {
+            flow<String> { attempts++; throw IllegalArgumentException("invalid data") }
+                .retryTransiently().collect()
+        }
+        assertTrue(result.exceptionOrNull() is IllegalArgumentException)
+        assertEquals(1, attempts)
+    }
+
+    @Test
+    fun httpClientErrorsAndCancellationAreNotRetried() = runBlocking {
+        val errors = listOf(403, 404, 429).map { code ->
+            retrofit2.HttpException(retrofit2.Response.error<String>(code,
+                okhttp3.ResponseBody.create(null, "blocked")))
+        } + kotlinx.coroutines.CancellationException("cancelled")
+        errors.forEach { error ->
+            var attempts = 0
+            val result = runCatching {
+                flow<String> { attempts++; throw error }.retryTransiently().collect()
+            }
+            assertTrue(result.exceptionOrNull() === error)
+            assertEquals(1, attempts)
+        }
     }
 }

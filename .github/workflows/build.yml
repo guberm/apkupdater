@@ -83,14 +83,10 @@ jobs:
       with:
         tag_name: ${{ inputs.release_tag || github.ref_name }}
         name: APK Updater ${{ inputs.release_tag || github.ref_name }}
+        # Publish manually only after testing these exact signed APKs on a device.
+        draft: true
         files: |
           ./app/build/outputs/apk/release/com.guberdev.apkupdater-release.apk
           ./app/build/outputs/apk/release/com.guberdev.apkupdater-sensitive-logging-release.apk
-        body: |
-          - Added APKCombo and Uptodown update sources.
-          - Added transient network retries, source health reporting, and a seven-day last-successful-result cache.
-          - Added Retry failed sources, installable-source arbitration, package-name validation, custom F-Droid repositories, and Wi-Fi/charging constraints for auto-refresh.
-          - Improved the Updates screen with refresh completeness, cached-result, and failed-source feedback.
-          - The sensitive-logging APK includes full Play request URLs and auth/cookie headers for manual debugging. Do not share its logs.
-          - Both APKs use the same package, version, and signing certificate.
+        body_path: QA-3.1.25.md
         prerelease: false

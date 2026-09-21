@@ -59,50 +59,66 @@ class Downloader(
     }
 
     /** Downloads [url] to a temp file using the correct client for the URL, returns the file. Retries on transient IO errors. */
-    fun downloadFile(url: String, onProgress: ((Long, Long) -> Unit)? = null): File {
+    fun downloadFile(url: String, downloadId: Int = -1, onProgress: ((Long, Long) -> Unit)? = null): File {
+        if (downloadId >= 0) cancelledDownloads.remove(downloadId)
         val resolved = resolveDownloadUrl(url)
         val (clientName, c) = downloadClient(resolved.url)
         var lastException: Exception? = null
         repeat(3) { attempt ->
+            checkCancelled(downloadId)
             val file = File(dir, randomUUID())
+            val call = c.newCall(downloadFileRequest(resolved.url, resolved.referer))
+            if (downloadId >= 0) activeCalls[downloadId] = call
             Log.d("Downloader", "downloadFile: attempt=${attempt + 1} url=${resolved.url} client=$clientName dest=${file.absolutePath}")
             try {
-                c.newCall(downloadFileRequest(resolved.url, resolved.referer)).execute().use { response ->
+                checkCancelled(downloadId)
+                call.execute().use { response ->
                     Log.d("Downloader", "downloadFile: response code=${response.code} success=${response.isSuccessful} attempt=${attempt + 1}")
                     if (response.isSuccessful && !response.isUnexpectedApkMirrorHtml(url)) {
                         val total = response.body.contentLength()
+                        onProgress?.invoke(0, total.coerceAtLeast(0))
                         response.body.byteStream().use { input ->
                             file.outputStream().use { output ->
-                                if (onProgress == null) {
-                                    input.copyTo(output)
-                                } else {
-                                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                                    var bytesRead = 0L
-                                    var read: Int
-                                    while (input.read(buffer).also { read = it } != -1) {
-                                        output.write(buffer, 0, read)
-                                        bytesRead += read
-                                        onProgress(bytesRead, if (total >= 0) total else bytesRead)
-                                    }
+                                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                                var bytesRead = 0L
+                                var read: Int
+                                while (input.read(buffer).also { read = it } != -1) {
+                                    checkCancelled(downloadId)
+                                    output.write(buffer, 0, read)
+                                    bytesRead += read
+                                    onProgress?.invoke(bytesRead, total.coerceAtLeast(0))
                                 }
                             }
                         }
                         if (file.length() == 0L) throw IOException("Downloaded file is empty: ${resolved.url}")
+                        if (total >= 0 && file.length() != total) throw IOException("Incomplete download")
+                        checkCancelled(downloadId)
                         Log.d("Downloader", "downloadFile: written ${file.length()} bytes -> ${file.absolutePath}")
                         return file
                     } else {
                         Log.e("Downloader", "downloadFile: FAILED code=${response.code} url=${resolved.url}")
                         file.delete()
+                        if (response.code != 408 && response.code !in 500..599) {
+                            throw IllegalStateException("Download failed with HTTP ${response.code}")
+                        }
                     }
                 }
-            } catch (e: java.io.IOException) {
-                Log.e("Downloader", "downloadFile: IOException on attempt ${attempt + 1} url=${resolved.url}", e)
+            } catch (e: Exception) {
                 file.delete()
+                checkCancelled(downloadId)
+                if (e !is IOException) throw e
+                Log.e("Downloader", "downloadFile: IOException on attempt ${attempt + 1} url=${resolved.url}", e)
                 lastException = e
+            } finally {
+                if (downloadId >= 0) activeCalls.remove(downloadId, call)
             }
         }
         Log.e("Downloader", "downloadFile: all retries exhausted for url=${resolved.url}")
         throw lastException ?: IOException("Download failed: ${resolved.url}")
+    }
+
+    private fun checkCancelled(id: Int) {
+        if (id >= 0 && cancelledDownloads.contains(id)) throw CancellationException("Download cancelled: $id")
     }
 
     fun downloadStream(url: String, downloadId: Int = -1): InputStream? {
@@ -151,7 +167,7 @@ class Downloader(
     }
 
     /** Downloads [url] into the SAF tree [treeUri] with the given [filename]. Returns the new document URI, or null on failure. */
-    fun downloadToUri(url: String, treeUri: Uri, filename: String, onProgress: ((Long, Long) -> Unit)? = null): Uri? = runCatching {
+    fun downloadToUri(url: String, treeUri: Uri, filename: String, downloadId: Int = -1, onProgress: ((Long, Long) -> Unit)? = null): Uri? = runCatching {
         Log.d("Downloader", "downloadToUri: url=$url treeUri=$treeUri filename=$filename")
         val treeDocId = DocumentsContract.getTreeDocumentId(treeUri)
         val docUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, treeDocId)
@@ -168,7 +184,12 @@ class Downloader(
 
         // Download to a temp file first so the full content is available before writing to SAF
         // Use downloadFile() so the correct HTTP client is chosen per URL (apkpure, aurora, etc.)
-        val tempFile = downloadFile(url, onProgress)
+        val tempFile = try {
+            downloadFile(url, downloadId, onProgress)
+        } catch (error: Exception) {
+            runCatching { DocumentsContract.deleteDocument(context.contentResolver, newDocUri) }
+            throw error
+        }
         Log.d("Downloader", "downloadToUri: tempFile=${tempFile.absolutePath} exists=${tempFile.exists()} size=${tempFile.length()}")
         if (!tempFile.exists() || tempFile.length() == 0L) {
             tempFile.delete()
@@ -189,6 +210,7 @@ class Downloader(
         Log.d("Downloader", "downloadToUri: success newDocUri=$newDocUri")
         newDocUri
     }.getOrElse {
+        if (it is CancellationException) throw it
         Log.e("Downloader", "downloadToUri: exception url=$url treeUri=$treeUri", it)
         null
     }

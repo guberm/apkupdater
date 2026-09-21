@@ -180,7 +180,7 @@ class UpdatesViewModel(
 				val treeUri = Uri.parse(customDirStr)
 				Log.d("UpdatesViewModel", "downloadAndInstall: using custom dir treeUri=$treeUri url=${update.link.link}")
 				installLog.emitProgress(AppInstallProgress(update.id, 0L, update.link.size))
-				val savedUri = downloader2.downloadToUri(update.link.link, treeUri, "${update.packageName}.apk") { curr, total ->
+				val savedUri = downloader2.downloadToUri(update.link.link, treeUri, "${update.packageName}.apk", update.id) { curr, total ->
 					installLog.emitProgress(AppInstallProgress(update.id, curr, if (total > 0) total else update.link.size))
 				}
 				Log.d("UpdatesViewModel", "downloadAndInstall: savedUri=$savedUri")

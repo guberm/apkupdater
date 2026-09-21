@@ -107,7 +107,7 @@ abstract class InstallViewModel(
                 try {
                     files.forEach { file ->
                         val offsetForThisFile = alreadyDownloaded
-                        tempFiles += downloader.downloadFile(file.url) { curr, _ ->
+                        tempFiles += downloader.downloadFile(file.url, id) { curr, _ ->
                             installLog.emitProgress(AppInstallProgress(id, offsetForThisFile + curr, totalBytes))
                         }
                         alreadyDownloaded += file.size
@@ -128,25 +128,15 @@ abstract class InstallViewModel(
                     tempFiles.forEach { it.delete() }
                 }
             }
-            is Link.Url -> {
-                installLog.emitProgress(AppInstallProgress(id, 0L, link.size))
-                val stream = downloader.downloadStream(link.link, id)
-                if (stream == null) {
-                    Log.e("InstallViewModel", "downloadAndInstall: download failed for $packageName")
-                    sendDownloadFailure(packageName)
-                    cancelInstall(id)
-                } else {
-                    installer.installPackage(id, packageName, stream)
+            is Link.Url, is Link.Xapk -> {
+                val url = if (link is Link.Url) link.link else (link as Link.Xapk).link
+                val file = downloader.downloadFile(url, id) { progress, total ->
+                    installLog.emitProgress(AppInstallProgress(id, progress, total))
                 }
-            }
-            is Link.Xapk -> {
-                val stream = downloader.downloadStream(link.link, id)
-                if (stream == null) {
-                    Log.e("InstallViewModel", "downloadAndInstall: XAPK download failed for $packageName")
-                    sendDownloadFailure(packageName)
-                    cancelInstall(id)
-                } else {
-                    installer.installXapk(id, packageName, stream)
+                try {
+                    installer.installPackage(id, packageName, file.inputStream())
+                } finally {
+                    file.delete()
                 }
             }
         }
