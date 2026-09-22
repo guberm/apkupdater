@@ -35,6 +35,8 @@ import com.apkupdater.ui.activity.MainActivity
 import com.topjohnwu.superuser.Shell
 import dev.rikka.tools.refine.Refine
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
@@ -338,11 +340,11 @@ class SessionInstaller(
 
     fun finish() = installMutex.unlock()
 
-    fun checkPermission(): Boolean {
+    suspend fun checkPermission(): Boolean = withContext(Dispatchers.Main.immediate) {
         if (prefs.shizukuInstall.get()) {
-            if (ShizukuAccess.isReady()) return true
+            if (ShizukuAccess.isReady()) return@withContext true
             Toast.makeText(context, R.string.shizuku_unavailable, Toast.LENGTH_LONG).show()
-            return false
+            return@withContext false
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -351,10 +353,10 @@ class SessionInstaller(
                 val intent = Intent(ACTION_MANAGE_UNKNOWN_APP_SOURCES, uri)
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 context.startActivity(intent, null)
-                return false
+                return@withContext false
             }
         }
-        return true
+        true
     }
 
     @Suppress("BlockingMethodInNonBlockingContext")
