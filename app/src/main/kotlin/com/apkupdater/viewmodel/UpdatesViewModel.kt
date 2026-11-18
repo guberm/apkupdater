@@ -20,12 +20,14 @@ import com.apkupdater.data.ui.preserveActiveDownloads
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.repository.UpdatesRepository
 import com.apkupdater.util.Badger
+import com.apkupdater.util.ForegroundJobs
 import com.apkupdater.util.Downloader
 import com.apkupdater.util.InstallLog
 import com.apkupdater.util.SessionInstaller
 import com.apkupdater.util.SnackBar
 import com.apkupdater.util.Stringer
 import com.apkupdater.util.launchWithMutex
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,9 +49,10 @@ class UpdatesViewModel(
 	private val snackBar: SnackBar,
 	private val stringer: Stringer,
 	installLog: InstallLog,
-	private val applicationScope: kotlinx.coroutines.CoroutineScope,
-	private val application: Application
-) : InstallViewModel(downloader2, installer, prefs, snackBar, stringer, installLog) {
+	applicationScope: CoroutineScope,
+	private val application: Application,
+	foregroundJobs: ForegroundJobs
+) : InstallViewModel(downloader2, installer, prefs, snackBar, stringer, installLog, applicationScope, foregroundJobs) {
 
 	private val mutex = Mutex()
 	private val refreshMutex = Mutex()
@@ -116,7 +119,7 @@ class UpdatesViewModel(
 				if (state.value.updates().any { it.id == update.id && it.isInstalling }) return@forEach
 				state.update { UpdatesUiState.Success(it.mutableUpdates().setIsInstalling(update.id, true)) }
 				val job = applicationScope.launch {
-					performDownloadAndInstall(update)
+					foregroundJobs.track { performDownloadAndInstall(update) }
 				}
 				downloadJobs[update.id] = job
 			}
@@ -141,7 +144,7 @@ class UpdatesViewModel(
 		setSuccess(state.value.mutableUpdates())
 	}
 
-	public override fun cancelInstall(id: Int) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
+	public override fun cancelInstall(id: Int) = applicationScope.launchWithMutex(mutex, Dispatchers.IO) {
 		downloader2.cancelDownload(id)
 		downloadJobs.remove(id)?.cancel()
 		cleanupDownload(id)
@@ -149,22 +152,22 @@ class UpdatesViewModel(
 		installer.finish()
 	}
 
-	override fun finishInstall(id: Int) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
+	override fun finishInstall(id: Int) = applicationScope.launchWithMutex(mutex, Dispatchers.IO) {
 		cleanupDownload(id)
 		setSuccess(state.value.mutableUpdates().removePackage(id))
 		installer.finish()
 	}
 
-	override fun downloadAndRootInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
+	override fun downloadAndRootInstall(update: AppUpdate) = applicationScope.launch(Dispatchers.IO) {
 		state.update { UpdatesUiState.Success(it.mutableUpdates().setIsInstalling(update.id, true)) }
-		downloadAndRootInstall(update.id, update.packageName, update.link)
+		foregroundJobs.track { downloadAndRootInstall(update.id, update.packageName, update.link) }
 	}
 
-	override fun downloadAndInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
+	override fun downloadAndInstall(update: AppUpdate) = applicationScope.launch(Dispatchers.IO) {
 		if(installer.checkPermission()) {
 			state.update { UpdatesUiState.Success(it.mutableUpdates().setIsInstalling(update.id, true)) }
-			val job = viewModelScope.launch(Dispatchers.IO) {
-				performDownloadAndInstall(update)
+			val job = launch {
+				foregroundJobs.track { performDownloadAndInstall(update) }
 			}
 			downloadJobs[update.id] = job
 			job.join()

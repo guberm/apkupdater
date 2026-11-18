@@ -50,6 +50,16 @@ class UpdatesNotification(private val context: Context) {
         }
     }
 
+    fun buildForegroundNotification(): android.app.Notification {
+        createNotificationChannel()
+        return NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_install)
+            .setContentTitle(context.getString(R.string.download_notification_title))
+            .setContentText(context.getString(R.string.download_notification_text))
+            .setOngoing(true)
+            .build()
+    }
+
     fun checkNotificationPermission(launcher: ManagedActivityResultLauncher<String, Boolean>) {
         if (Build.VERSION.SDK_INT >= 33) {
             if (!areNotificationsEnabled()) {

@@ -13,11 +13,13 @@ import com.apkupdater.data.ui.AppUpdate
 import com.apkupdater.data.ui.Link
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.util.Downloader
+import com.apkupdater.util.ForegroundJobs
 import com.apkupdater.util.InstallLog
 import com.apkupdater.util.SessionInstaller
 import com.apkupdater.util.SnackBar
 import com.apkupdater.util.Stringer
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -29,7 +31,9 @@ abstract class InstallViewModel(
     private val prefs: Prefs,
     private val snackBar: SnackBar,
     private val stringer: Stringer,
-    protected val installLog: InstallLog
+    protected val installLog: InstallLog,
+    protected val applicationScope: CoroutineScope,
+    protected val foregroundJobs: ForegroundJobs
 ): ViewModel() {
 
     fun install(update: AppUpdate) {

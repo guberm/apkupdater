@@ -131,6 +131,8 @@
     <string name="notification_channel_description">Channel for update notifications.</string>
     <string name="notification_channel_id" translatable="false">updateChannel</string>
     <string name="notification_update_title">Updates</string>
+    <string name="download_notification_title">Installing updates</string>
+    <string name="download_notification_text">Downloading and installing app updates in the background</string>
     <plurals name="notification_update_description">
         <item quantity="zero">No updates found.</item>
         <item quantity="one">Found %1$d update.</item>

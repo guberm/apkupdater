@@ -1,6 +1,8 @@
 package com.apkupdater.di
 
 import androidx.work.WorkManager
+import androidx.core.content.ContextCompat
+import android.content.Intent
 import com.apkupdater.BuildConfig
 import com.apkupdater.R
 import com.apkupdater.data.ui.FdroidSource
@@ -26,7 +28,9 @@ import com.apkupdater.service.GitHubService
 import com.apkupdater.service.GitLabService
 import com.apkupdater.util.Badger
 import com.apkupdater.util.Clipboard
+import com.apkupdater.util.DownloadService
 import com.apkupdater.util.Downloader
+import com.apkupdater.util.ForegroundJobs
 import com.apkupdater.util.InstallLog
 import com.apkupdater.util.SessionInstaller
 import com.apkupdater.util.SnackBar
@@ -181,6 +185,13 @@ val mainModule = module {
 
 	single { UpdatesNotification(get()) }
 
+	single {
+		ForegroundJobs(
+			startService = { ContextCompat.startForegroundService(androidApplication(), Intent(androidApplication(), DownloadService::class.java)) },
+			stopService = { androidApplication().stopService(Intent(androidApplication(), DownloadService::class.java)) }
+		)
+	}
+
 	single { Clipboard(androidContext()) }
 
 	single { SessionInstaller(get(), get(), get()) }
@@ -203,10 +214,10 @@ val mainModule = module {
 
 	viewModel { AppsViewModel(get(), get(), get()) }
 
-	viewModel { UpdatesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), androidApplication()) }
+	viewModel { UpdatesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), androidApplication(), get()) }
 
 	viewModel { SettingsViewModel(get(), get(), WorkManager.getInstance(get()), get(), get(), get(), get(), get(), get(), get()) }
 
-	viewModel { SearchViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+	viewModel { SearchViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
 
 }

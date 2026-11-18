@@ -14,11 +14,13 @@ import com.apkupdater.prefs.Prefs
 import com.apkupdater.repository.SearchRepository
 import com.apkupdater.util.Badger
 import com.apkupdater.util.Downloader
+import com.apkupdater.util.ForegroundJobs
 import com.apkupdater.util.InstallLog
 import com.apkupdater.util.SessionInstaller
 import com.apkupdater.util.SnackBar
 import com.apkupdater.util.Stringer
 import com.apkupdater.util.launchWithMutex
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,8 +38,10 @@ class SearchViewModel(
     prefs: Prefs,
     private val snackBar: SnackBar,
     private val stringer: Stringer,
-    installLog: InstallLog
-) : InstallViewModel(downloader2, installer, prefs, snackBar, stringer, installLog) {
+    installLog: InstallLog,
+    applicationScope: CoroutineScope,
+    foregroundJobs: ForegroundJobs
+) : InstallViewModel(downloader2, installer, prefs, snackBar, stringer, installLog, applicationScope, foregroundJobs) {
 
     private val mutex = Mutex()
     private val searchMutex = Mutex()
@@ -74,27 +78,27 @@ class SearchViewModel(
         }
     }
 
-    public override fun cancelInstall(id: Int) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
+    public override fun cancelInstall(id: Int) = applicationScope.launchWithMutex(mutex, Dispatchers.IO) {
         downloader2.cancelDownload(id)
         state.update { SearchUiState.Success(it.mutableUpdates().setIsInstalling(id, false)) }
         installer.finish()
     }
 
-    override fun finishInstall(id: Int) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
+    override fun finishInstall(id: Int) = applicationScope.launchWithMutex(mutex, Dispatchers.IO) {
         state.update { SearchUiState.Success(it.mutableUpdates().removeId(id)) }
         badger.changeSearchBadge(state.value.updates().size.toString())
         installer.finish()
     }
 
-    override fun downloadAndRootInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
+    override fun downloadAndRootInstall(update: AppUpdate) = applicationScope.launch(Dispatchers.IO) {
         state.update { SearchUiState.Success(it.mutableUpdates().setIsInstalling(update.id, true)) }
-        downloadAndRootInstall(update.id, update.packageName, update.link)
+        foregroundJobs.track { downloadAndRootInstall(update.id, update.packageName, update.link) }
     }
 
-    override fun downloadAndInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
+    override fun downloadAndInstall(update: AppUpdate) = applicationScope.launch(Dispatchers.IO) {
         if(installer.checkPermission()) {
             state.update { SearchUiState.Success(it.mutableUpdates().setIsInstalling(update.id, true)) }
-            downloadAndInstall(update.id, update.packageName, update.link)
+            foregroundJobs.track { downloadAndInstall(update.id, update.packageName, update.link) }
         }
     }
 
