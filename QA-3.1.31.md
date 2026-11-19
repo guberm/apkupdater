@@ -16,4 +16,4 @@ Install bookkeeping (`cancelInstall`/`finishInstall`, installer mutex release, t
 ## Local results
 
 - `test lint assembleDebug`: `BUILD SUCCESSFUL` (Gradle 9.4.0 / JDK 17, platform 36), 2/2 new tests passed.
-- On-device background verification pending; publish only after the smoke test of the exact signed APKs.
+- Device test passed: download continued with the app in the background and the "Installing updates" notification appeared. Release 3.1.31 published after this smoke test.
