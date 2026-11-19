@@ -5,11 +5,15 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import java.io.IOException
 
 internal data class ResolvedDownloadUrl(
     val url: String,
     val referer: String? = null
 )
+
+/** APKMirror served its Cloudflare bot-protection challenge; downloads cannot proceed until it clears. */
+internal class ApkMirrorChallengeException(message: String) : IOException(message)
 
 internal object ApkMirrorDownloadResolver {
     private const val HOST = "www.apkmirror.com"
@@ -19,6 +23,14 @@ internal object ApkMirrorDownloadResolver {
     fun isApkMirrorUrl(url: String) = runCatching {
         url.toHttpUrl().host == HOST
     }.getOrDefault(false)
+
+    fun isChallengeResponse(code: Int, header: (String) -> String?, body: String?): Boolean =
+        header("cf-mitigated")?.equals("challenge", ignoreCase = true) == true ||
+            ((code == 403 || code == 503) && body != null && isChallengeHtml(body))
+
+    fun isChallengeHtml(html: String): Boolean =
+        html.contains("Just a moment", ignoreCase = true) ||
+            html.contains("challenge-platform", ignoreCase = true)
 
     fun resolve(client: OkHttpClient, url: String): ResolvedDownloadUrl {
         if (!isApkMirrorUrl(url) || url.contains(DOWNLOAD_PATH)) {
@@ -67,10 +79,11 @@ internal object ApkMirrorDownloadResolver {
 
     private fun fetchDocument(client: OkHttpClient, url: String, referer: String? = null): Document {
         client.newCall(request(url, referer)).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IllegalStateException("APKMirror page request failed: ${response.code}")
+            val body = response.body.string()
+            if (!response.isSuccessful || isChallengeResponse(response.code, response.headers::get, body)) {
+                throw ApkMirrorChallengeException("APKMirror page request blocked: ${response.code}")
             }
-            return Jsoup.parse(response.body.string(), url)
+            return Jsoup.parse(body, url)
         }
     }
 

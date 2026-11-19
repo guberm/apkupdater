@@ -29,6 +29,10 @@ class Downloader(
     private val activeCalls = ConcurrentHashMap<Int, Call>()
     private val cancelledDownloads = Collections.newSetFromMap(ConcurrentHashMap<Int, Boolean>())
 
+    private companion object {
+        const val CHALLENGE_RETRY_DELAY_MS = 10_000L
+    }
+
     fun clearDownloadCache(): Int = clearDownloadCache(dir)
 
     fun cancelDownload(id: Int) {
@@ -36,27 +40,7 @@ class Downloader(
         activeCalls.remove(id)?.cancel()
     }
 
-    fun download(url: String): File {
-        val resolved = resolveDownloadUrl(url)
-        val file = File(dir, randomUUID())
-        val c = if (ApkMirrorDownloadResolver.isApkMirrorUrl(resolved.url)) auroraClient else client
-        try {
-            c.newCall(downloadRequest(resolved.url, resolved.referer)).execute().use { response ->
-                if (response.isSuccessful && !response.isUnexpectedApkMirrorHtml(url)) {
-                    response.body.byteStream().use { input ->
-                        file.outputStream().use { output -> input.copyTo(output) }
-                    }
-                } else {
-                    throw IOException("Download failed with HTTP ${response.code}: $url")
-                }
-            }
-            if (file.length() == 0L) throw IOException("Downloaded file is empty: $url")
-            return file
-        } catch (error: Throwable) {
-            file.delete()
-            throw error
-        }
-    }
+    fun download(url: String): File = downloadFile(url)
 
     /** Downloads [url] to a temp file using the correct client for the URL, returns the file. Retries on transient IO errors. */
     fun downloadFile(url: String, downloadId: Int? = null, onProgress: ((Long, Long) -> Unit)? = null): File {
@@ -98,8 +82,16 @@ class Downloader(
                     } else {
                         Log.e("Downloader", "downloadFile: FAILED code=${response.code} url=${resolved.url}")
                         file.delete()
-                        if (response.code != 408 && response.code !in 500..599) {
-                            throw IllegalStateException("Download failed with HTTP ${response.code}")
+                        val challenge = ApkMirrorDownloadResolver.isApkMirrorUrl(resolved.url) && (
+                            response.header("cf-mitigated") != null ||
+                                ApkMirrorDownloadResolver.isChallengeResponse(response.code, response.headers::get, null) ||
+                                response.isUnexpectedApkMirrorHtml(url)
+                            )
+                        when {
+                            challenge -> lastException = ApkMirrorChallengeException("APKMirror blocked the download (HTTP ${response.code})")
+                            response.code != 408 && response.code !in 500..599 ->
+                                throw IllegalStateException("Download failed with HTTP ${response.code}")
+                            else -> lastException = IOException("Download failed with HTTP ${response.code}")
                         }
                     }
                 }
@@ -112,6 +104,8 @@ class Downloader(
             } finally {
                 if (downloadId != null) activeCalls.remove(downloadId, call)
             }
+            // Cloudflare scores fluctuate; a short wait often clears a transient APKMirror challenge.
+            if (lastException is ApkMirrorChallengeException) Thread.sleep(CHALLENGE_RETRY_DELAY_MS * (attempt + 1))
         }
         Log.e("Downloader", "downloadFile: all retries exhausted for url=${resolved.url}")
         throw lastException ?: IOException("Download failed: ${resolved.url}")
@@ -251,6 +245,7 @@ class Downloader(
         val resolverClient = if (ApkMirrorDownloadResolver.isApkMirrorUrl(url)) auroraClient else client
         ApkMirrorDownloadResolver.resolve(resolverClient, url)
     }.getOrElse {
+        if (it is ApkMirrorChallengeException) throw it
         Log.e("Downloader", "resolveDownloadUrl: failed url=$url", it)
         ResolvedDownloadUrl(url)
     }

@@ -13,6 +13,7 @@ import com.apkupdater.data.ui.AppUpdate
 import com.apkupdater.data.ui.Link
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.util.Downloader
+import com.apkupdater.util.ApkMirrorChallengeException
 import com.apkupdater.util.ForegroundJobs
 import com.apkupdater.util.InstallLog
 import com.apkupdater.util.SessionInstaller
@@ -88,6 +89,7 @@ abstract class InstallViewModel(
         }
     }.getOrElse {
         Log.e("InstallViewModel", "Error in downloadAndRootInstall.", it)
+        if (it is ApkMirrorChallengeException) showApkMirrorBlockedSnack(packageName) else sendDownloadFailure(packageName)
         cancelInstall(id)
     }
 
@@ -147,8 +149,12 @@ abstract class InstallViewModel(
     }.getOrElse {
         if (it is CancellationException) throw it
         Log.e("InstallViewModel", "Error in downloadAndInstall.", it)
-        sendDownloadFailure(packageName)
+        if (it is ApkMirrorChallengeException) showApkMirrorBlockedSnack(packageName) else sendDownloadFailure(packageName)
         cancelInstall(id)
+    }
+
+    private fun showApkMirrorBlockedSnack(packageName: String) {
+        snackBar.snackBar(viewModelScope, TextSnack(stringer.get(R.string.download_blocked_apkmirror, packageName)))
     }
 
     private fun sendDownloadFailure(packageName: String) {
