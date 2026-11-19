@@ -88,5 +88,5 @@ jobs:
         files: |
           ./app/build/outputs/apk/release/com.guberdev.apkupdater-release.apk
           ./app/build/outputs/apk/release/com.guberdev.apkupdater-sensitive-logging-release.apk
-        body_path: QA-3.1.31.md
+        body_path: QA-3.1.32.md
         prerelease: false
