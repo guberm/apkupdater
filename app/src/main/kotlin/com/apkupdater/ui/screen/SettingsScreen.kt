@@ -220,6 +220,8 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 			R.drawable.ic_play
 		)
 		CustomFdroidSettings(viewModel)
+
+		FlareSolverrSettings(viewModel)
 	}
 
 	item {
@@ -396,6 +398,31 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 			R.drawable.ic_block,
 			R.drawable.ic_block
 		)
+	}
+}
+
+@Composable
+private fun FlareSolverrSettings(viewModel: SettingsViewModel) {
+	val url = remember { mutableStateOf(viewModel.getFlareSolverrUrl()) }
+
+	LargeTitle(stringResource(R.string.settings_flaresolverr), Modifier.padding(start = 16.dp, top = 16.dp))
+	OutlinedTextField(
+		value = url.value,
+		onValueChange = { url.value = it },
+		modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+		label = { Text(stringResource(R.string.settings_flaresolverr_endpoint)) },
+		singleLine = true
+	)
+	Text(
+		stringResource(R.string.settings_flaresolverr_description),
+		style = MaterialTheme.typography.bodySmall,
+		modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+	)
+	Button(
+		onClick = { viewModel.setFlareSolverrUrl(url.value) },
+		modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+	) {
+		Text(stringResource(R.string.settings_flaresolverr_save))
 	}
 }
 

@@ -89,7 +89,8 @@ class Downloader(
                             )
                         when {
                             challenge -> {
-                                if (ChallengeSolver.solve(context, resolved.url)) {
+                                // FlareSolverr (if configured) first, then the on-device WebView solver.
+                                if (solveChallenge(resolved.url)) {
                                     // Clearance captured into the cookie jar/UA; this attempt is stale now.
                                     lastException = null
                                     return@repeat
@@ -253,7 +254,7 @@ class Downloader(
         ApkMirrorDownloadResolver.resolve(resolverClient, url)
     }.getOrElse {
         if (it is ApkMirrorChallengeException) {
-            if (ChallengeSolver.solve(context, url)) {
+            if (solveChallenge(url)) {
                 val resolverClient = if (ApkMirrorDownloadResolver.isApkMirrorUrl(url)) auroraClient else client
                 return runCatching { ApkMirrorDownloadResolver.resolve(resolverClient, url) }.getOrElse { resolved -> throw resolved }
             }
@@ -263,6 +264,11 @@ class Downloader(
         ResolvedDownloadUrl(url)
     }
     }
+
+    /** Challenge backends in priority order: configured FlareSolverr server, then the on-device WebView. */
+    private fun solveChallenge(url: String): Boolean =
+        (FlareSolverrClient.isConfigured() && FlareSolverrClient.solve(url)) ||
+            ChallengeSolver.solve(context, url)
 
     private fun downloadClient(url: String) = when {
         url.contains("apkpure") -> "apkPureClient" to apkPureClient

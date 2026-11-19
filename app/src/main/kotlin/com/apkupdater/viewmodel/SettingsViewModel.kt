@@ -66,6 +66,10 @@ class SettingsViewModel(
 
 	fun getNewInstaller() = prefs.newInstaller.get()
 	fun setNewInstaller(b: Boolean) = prefs.newInstaller.put(b)
+
+	fun getFlareSolverrUrl() = prefs.flaresolverrUrl.get()
+
+	fun setFlareSolverrUrl(url: String) = prefs.flaresolverrUrl.put(url.trim())
 	fun setShizukuInstall(enabled: Boolean) {
 		if (!enabled) {
 			prefs.shizukuInstall.put(false)

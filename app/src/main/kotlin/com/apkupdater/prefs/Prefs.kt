@@ -44,6 +44,7 @@ class Prefs(
 	val newInstaller = boolean("newInstaller", defValue = false, backed = true)
 	val deleteAfterInstall = boolean("deleteAfterInstall", defValue = false, backed = true)
 	val downloadDir = string("downloadDir", defValue = "", backed = true)
+	val flaresolverrUrl = string("flaresolverrUrl", defValue = "", backed = true)
 	val groupByPackageDefault = boolean("groupByPackageDefault", defValue = true, backed = true)
 	val ignoreSameVersion = boolean("ignoreSameVersion", defValue = false, backed = true)
 	val apkMirrorArch = int("apkMirrorArch", defValue = 0, backed = true)

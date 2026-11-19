@@ -61,10 +61,17 @@ object ChallengeSolver {
 	}
 
 	fun onSolved(userAgent: String, cookieHeader: String) {
-		solvedUserAgent = userAgent
-		cookieHeader.split(";").forEach { part ->
+		applySolution(userAgent, cookieHeader.split(";").mapNotNull { part ->
 			val pair = part.trim().split("=", limit = 2)
-			if (pair.size == 2 && pair[0].isNotBlank()) cookieStore[pair[0]] = pair[1]
+			if (pair.size == 2 && pair[0].isNotBlank()) pair[0] to pair[1] else null
+		})
+	}
+
+	/** Stores a solved session (cookies + user agent) from any solver backend. */
+	fun applySolution(userAgent: String, cookies: List<Pair<String, String>>) {
+		solvedUserAgent = userAgent
+		cookies.forEach { (name, value) ->
+			if (name.isNotBlank()) cookieStore[name] = value
 		}
 		pending?.complete(true)
 		pending = null
