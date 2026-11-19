@@ -17,8 +17,8 @@ internal class ApkMirrorChallengeException(message: String) : IOException(messag
 
 internal object ApkMirrorDownloadResolver {
     private const val HOST = "www.apkmirror.com"
-    private const val BASE_URL = "https://www.apkmirror.com"
-    private const val DOWNLOAD_PATH = "/wp-content/themes/APKMirror/download.php"
+    internal const val BASE_URL = "https://www.apkmirror.com"
+    internal const val DOWNLOAD_PATH = "/wp-content/themes/APKMirror/download.php"
 
     fun isApkMirrorUrl(url: String) = runCatching {
         url.toHttpUrl().host == HOST

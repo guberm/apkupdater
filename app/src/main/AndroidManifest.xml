@@ -33,6 +33,12 @@
             android:foregroundServiceType="dataSync"
         />
 
+        <activity
+            android:name=".util.ChallengeSolverActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+        />
+
         <provider
             android:name="rikka.shizuku.ShizukuProvider"
             android:authorities="${applicationId}.shizuku"

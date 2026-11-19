@@ -88,7 +88,14 @@ class Downloader(
                                 response.isUnexpectedApkMirrorHtml(url)
                             )
                         when {
-                            challenge -> lastException = ApkMirrorChallengeException("APKMirror blocked the download (HTTP ${response.code})")
+                            challenge -> {
+                                if (ChallengeSolver.solve(context, resolved.url)) {
+                                    // Clearance captured into the cookie jar/UA; this attempt is stale now.
+                                    lastException = null
+                                    return@repeat
+                                }
+                                lastException = ApkMirrorChallengeException("APKMirror blocked the download (HTTP ${response.code})")
+                            }
                             response.code != 408 && response.code !in 500..599 ->
                                 throw IllegalStateException("Download failed with HTTP ${response.code}")
                             else -> lastException = IOException("Download failed with HTTP ${response.code}")
@@ -245,7 +252,13 @@ class Downloader(
         val resolverClient = if (ApkMirrorDownloadResolver.isApkMirrorUrl(url)) auroraClient else client
         ApkMirrorDownloadResolver.resolve(resolverClient, url)
     }.getOrElse {
-        if (it is ApkMirrorChallengeException) throw it
+        if (it is ApkMirrorChallengeException) {
+            if (ChallengeSolver.solve(context, url)) {
+                val resolverClient = if (ApkMirrorDownloadResolver.isApkMirrorUrl(url)) auroraClient else client
+                return runCatching { ApkMirrorDownloadResolver.resolve(resolverClient, url) }.getOrElse { resolved -> throw resolved }
+            }
+            throw it
+        }
         Log.e("Downloader", "resolveDownloadUrl: failed url=$url", it)
         ResolvedDownloadUrl(url)
     }

@@ -134,6 +134,7 @@
     <string name="download_notification_title">Installing updates</string>
     <string name="download_notification_text">Downloading and installing app updates in the background</string>
     <string name="download_blocked_apkmirror">APKMirror blocked the download of %1$s (bot protection). Try again later or pick another source.</string>
+    <string name="apkmirror_verify_hint">Verifying APKMirror access… If a check appears, complete it to continue the download.</string>
     <plurals name="notification_update_description">
         <item quantity="zero">No updates found.</item>
         <item quantity="one">Found %1$d update.</item>

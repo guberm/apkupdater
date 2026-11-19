@@ -27,6 +27,7 @@ import com.apkupdater.service.FdroidService
 import com.apkupdater.service.GitHubService
 import com.apkupdater.service.GitLabService
 import com.apkupdater.util.Badger
+import com.apkupdater.util.ChallengeSolver
 import com.apkupdater.util.Clipboard
 import com.apkupdater.util.DownloadService
 import com.apkupdater.util.Downloader
@@ -147,7 +148,12 @@ val mainModule = module {
 			.connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
 			.readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
 			.writeTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
-			.addUserAgentInterceptor("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36").build()
+			.cookieJar(ChallengeSolver.cookieJar)
+			// After a WebView challenge solve, Cloudflare binds clearance to the WebView's user agent.
+			.addNetworkInterceptor {
+				val ua = ChallengeSolver.userAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36")
+				it.proceed(it.request().newBuilder().header("User-Agent", ua).build())
+			}.build()
 		val apkPureClient = OkHttpClient.Builder().followRedirects(true).cache(get()).addUserAgentInterceptor("APKPure/3.19.39 (Aegon)").build()
 		val dir = File(androidContext().cacheDir, "downloads").apply { mkdirs() }
 		Downloader(client, apkPureClient, auroraClient, dir, androidContext())
